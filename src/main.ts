@@ -1,8 +1,9 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { bootstrapApplication } from '@angular/platform-browser';
+import { importedCollection } from './collection';
 
-interface BoardGame {
+export interface BoardGame {
   id: string;
   name: string;
   originalName: string;
@@ -133,7 +134,7 @@ const emptyDraft = (): GameDraft => ({
             } @else {
               <div class="empty-state"><div class="empty-illustration">⚄</div><div class="empty-kicker">A MESA ESTÁ PRONTA</div><h3>Nosso primeiro jogo começa aqui</h3><p>Cadastrem os jogos da coleção para encontrar tudo num só lugar: jogadores, duração, editora e até o tamanho da caixa.</p><button class="primary-button empty-action" (click)="openNewGame()"><span aria-hidden="true">＋</span> Cadastrar primeiro jogo</button></div>
             }
-            <div class="data-note"><span class="data-note-icon">◷</span> Os dados ficam salvos neste navegador automaticamente.</div>
+            <div class="data-note"><span class="data-note-icon">◷</span> Coleção importada do BoardGameGeek: 304 jogos e expansões. Edições e novos cadastros ficam salvos neste navegador.</div>
             <footer class="page-footer"><span>Controle da Vida Aulufa</span><span>Um projeto nosso <span class="heart">♥</span></span></footer>
           </div>
         } @else {
@@ -244,10 +245,15 @@ class AppComponent {
   }
   private asText(value: number | null): string { return value === null ? '' : String(value); }
   private loadGames(): BoardGame[] {
-    try { const value = globalThis.localStorage?.getItem(this.storageKey); return value ? JSON.parse(value) as BoardGame[] : []; }
-    catch { return []; }
+    let saved: BoardGame[] = [];
+    try { const value = globalThis.localStorage?.getItem(this.storageKey); saved = value ? JSON.parse(value) as BoardGame[] : []; }
+    catch { saved = []; }
+    const merged = new Map(importedCollection.map((game) => [game.id, game]));
+    for (const game of saved) merged.set(game.id, game);
+    return [...merged.values()];
   }
   private persistGames(): void { try { globalThis.localStorage?.setItem(this.storageKey, JSON.stringify(this.games)); } catch (error) { console.warn('Não foi possível salvar os jogos neste navegador.', error); } }
 }
 
 bootstrapApplication(AppComponent).catch((error: unknown) => console.error(error));
+
