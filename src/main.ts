@@ -289,7 +289,16 @@ class AppComponent {
     const merged = new Map(importedCollection.map((game) => [game.id, game]));
     for (const game of saved) {
       const imported = merged.get(game.id);
-      merged.set(game.id, { ...imported, ...game, idealPlayers: game.idealPlayers || imported?.idealPlayers || '' });
+      merged.set(game.id, {
+        ...imported,
+        ...game,
+        designers: game.designers || imported?.designers || '',
+        mechanics: game.mechanics?.length ? game.mechanics : imported?.mechanics || [],
+        boxLength: game.boxLength ?? imported?.boxLength ?? null,
+        boxWidth: game.boxWidth ?? imported?.boxWidth ?? null,
+        boxHeight: game.boxHeight ?? imported?.boxHeight ?? null,
+        idealPlayers: game.idealPlayers || imported?.idealPlayers || ''
+      });
     }
     for (const id of deleted) merged.delete(id);
     return [...merged.values()];
