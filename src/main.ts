@@ -287,7 +287,10 @@ class AppComponent {
     try { deleted = JSON.parse(globalThis.localStorage?.getItem(this.deletedStorageKey) || '[]') as string[]; }
     catch { deleted = []; }
     const merged = new Map(importedCollection.map((game) => [game.id, game]));
-    for (const game of saved) merged.set(game.id, game);
+    for (const game of saved) {
+      const imported = merged.get(game.id);
+      merged.set(game.id, { ...imported, ...game, idealPlayers: game.idealPlayers || imported?.idealPlayers || '' });
+    }
     for (const id of deleted) merged.delete(id);
     return [...merged.values()];
   }
