@@ -10,6 +10,7 @@ export interface BoardGame {
   year: number | null;
   playersMin: number | null;
   playersMax: number | null;
+  idealPlayers: string;
   timeMin: number | null;
   timeMax: number | null;
   age: number | null;
@@ -32,6 +33,7 @@ export interface BoardGame {
 
 interface GameDraft {
   name: string; originalName: string; year: string | number | null; playersMin: string | number | null; playersMax: string | number | null;
+  idealPlayers: string;
   timeMin: string | number | null; timeMax: string | number | null; age: string | number | null; complexity: string | number | null; designers: string;
   artists: string; publishers: string; edition: string; language: string; categories: string;
   mechanics: string; bggId: string; bggUrl: string; ludopediaUrl: string;
@@ -39,7 +41,7 @@ interface GameDraft {
 }
 
 const emptyDraft = (): GameDraft => ({
-  name: '', originalName: '', year: '', playersMin: '', playersMax: '', timeMin: '', timeMax: '',
+  name: '', originalName: '', year: '', playersMin: '', playersMax: '', idealPlayers: '', timeMin: '', timeMax: '',
   age: '', complexity: '', designers: '', artists: '', publishers: '', edition: '', language: '',
   categories: '', mechanics: '', bggId: '', bggUrl: '', ludopediaUrl: '', boxLength: '',
   boxWidth: '', boxHeight: '', notes: ''
@@ -115,7 +117,7 @@ const emptyDraft = (): GameDraft => ({
                   <article class="game-card">
                     <div class="game-cover" aria-hidden="true"><span>{{ initials(game.name) }}</span><i>✳</i></div>
                     <div class="game-main">
-                      <div class="game-title-row"><div><h3>{{ game.name }}</h3>@if (game.originalName) { <span class="original-title">{{ game.originalName }}</span> }</div><button class="edit-button" (click)="editGame(game)" [attr.aria-label]="'Editar ' + game.name"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5 5 5M4 20l4.5-1 10.2-10.2a2.12 2.12 0 0 0-3-3L5.5 16 4 20Z"/></svg><span>Editar</span></button></div>
+                      <div class="game-title-row"><div><h3>{{ game.name }}</h3>@if (game.originalName) { <span class="original-title">{{ game.originalName }}</span> }</div><div class="game-actions"><button class="edit-button" (click)="viewGame(game)" [attr.aria-label]="'Visualizar dados de ' + game.name" title="Visualizar dados"><span>Ver</span></button><button class="edit-button" (click)="editGame(game)" [attr.aria-label]="'Editar ' + game.name" title="Editar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5 5 5M4 20l4.5-1 10.2-10.2a2.12 2.12 0 0 0-3-3L5.5 16 4 20Z"/></svg><span>Editar</span></button><button class="delete-button" (click)="deleteGame(game)" [attr.aria-label]="'Excluir ' + game.name" title="Excluir">×</button></div></div>
                       <div class="game-publisher">{{ game.publishers || 'Editora não informada' }}@if (game.year) { <span>·</span> {{ game.year }} }</div>
                       <div class="game-tags">@for (tag of game.categories.slice(0, 3); track tag) { <span>{{ tag }}</span> }</div>
                       <div class="game-facts">
@@ -155,7 +157,7 @@ const emptyDraft = (): GameDraft => ({
               <div class="form-section-label">IDENTIFICAÇÃO</div>
               <div class="form-grid"><label class="form-field span-two"><span>Nome do jogo *</span><input name="name" [(ngModel)]="draft.name" required maxlength="120" placeholder="Ex.: Catan"></label><label class="form-field"><span>Nome original</span><input name="originalName" [(ngModel)]="draft.originalName" placeholder="Ex.: The Settlers of Catan"></label><label class="form-field"><span>Ano de publicação</span><input name="year" [(ngModel)]="draft.year" type="number" min="1900" max="2100" placeholder="1995"></label><label class="form-field"><span>Edição</span><input name="edition" [(ngModel)]="draft.edition" placeholder="Ex.: edição brasileira"></label><label class="form-field"><span>Idioma</span><input name="language" [(ngModel)]="draft.language" placeholder="Português"></label></div>
               <div class="form-section-label">DADOS TÉCNICOS</div>
-              <div class="form-grid"><label class="form-field"><span>Jogadores · mínimo</span><input name="playersMin" [(ngModel)]="draft.playersMin" type="number" min="1" max="100" placeholder="2"></label><label class="form-field"><span>Jogadores · máximo</span><input name="playersMax" [(ngModel)]="draft.playersMax" type="number" min="1" max="100" placeholder="4"></label><label class="form-field"><span>Tempo mínimo (min)</span><input name="timeMin" [(ngModel)]="draft.timeMin" type="number" min="1" placeholder="60"></label><label class="form-field"><span>Tempo máximo (min)</span><input name="timeMax" [(ngModel)]="draft.timeMax" type="number" min="1" placeholder="120"></label><label class="form-field"><span>Idade recomendada (anos)</span><input name="age" [(ngModel)]="draft.age" type="number" min="0" max="99" placeholder="10"></label><label class="form-field"><span>Complexidade BGG (1 a 5)</span><input name="complexity" [(ngModel)]="draft.complexity" type="number" min="1" max="5" step="0.01" placeholder="2.28"></label><label class="form-field"><span>Designer(es)</span><input name="designers" [(ngModel)]="draft.designers" placeholder="Separe por vírgula"></label><label class="form-field"><span>Artista(s)</span><input name="artists" [(ngModel)]="draft.artists" placeholder="Separe por vírgula"></label><label class="form-field span-two"><span>Editora(s)</span><input name="publishers" [(ngModel)]="draft.publishers" placeholder="Separe por vírgula"></label><label class="form-field"><span>Categorias</span><input name="categories" [(ngModel)]="draft.categories" placeholder="Estratégia, Família"></label><label class="form-field"><span>Mecânicas</span><input name="mechanics" [(ngModel)]="draft.mechanics" placeholder="Negociação, alocação de dados"></label></div>
+              <div class="form-grid"><label class="form-field"><span>Jogadores · mínimo</span><input name="playersMin" [(ngModel)]="draft.playersMin" type="number" min="1" max="100" placeholder="2"></label><label class="form-field"><span>Jogadores · máximo</span><input name="playersMax" [(ngModel)]="draft.playersMax" type="number" min="1" max="100" placeholder="4"></label><label class="form-field"><span>Número ideal de jogadores</span><input name="idealPlayers" [(ngModel)]="draft.idealPlayers" placeholder="Ex.: 2, 3 (ou todos)"></label><label class="form-field"><span>Tempo mínimo (min)</span><input name="timeMin" [(ngModel)]="draft.timeMin" type="number" min="1" placeholder="60"></label><label class="form-field"><span>Tempo máximo (min)</span><input name="timeMax" [(ngModel)]="draft.timeMax" type="number" min="1" placeholder="120"></label><label class="form-field"><span>Idade recomendada (anos)</span><input name="age" [(ngModel)]="draft.age" type="number" min="0" max="99" placeholder="10"></label><label class="form-field"><span>Complexidade BGG (1 a 5)</span><input name="complexity" [(ngModel)]="draft.complexity" type="number" min="1" max="5" step="0.01" placeholder="2.28"></label><label class="form-field"><span>Designer</span><input name="designers" [(ngModel)]="draft.designers" placeholder="Separe por vírgula"></label><label class="form-field"><span>Artista(s)</span><input name="artists" [(ngModel)]="draft.artists" placeholder="Separe por vírgula"></label><label class="form-field span-two"><span>Editora(s)</span><input name="publishers" [(ngModel)]="draft.publishers" placeholder="Separe por vírgula"></label><label class="form-field"><span>Categorias</span><input name="categories" [(ngModel)]="draft.categories" placeholder="Estratégia, Família"></label><label class="form-field"><span>Lista de mecanismos</span><input name="mechanics" [(ngModel)]="draft.mechanics" placeholder="Negociação, alocação de dados"></label></div>
               <div class="form-section-label">DIMENSÕES DA CAIXA <small>em centímetros</small></div>
               <div class="form-grid dimension-grid"><label class="form-field"><span>Comprimento</span><input name="boxLength" [(ngModel)]="draft.boxLength" type="number" min="0" step="0.1" placeholder="30"></label><label class="form-field"><span>Largura</span><input name="boxWidth" [(ngModel)]="draft.boxWidth" type="number" min="0" step="0.1" placeholder="30"></label><label class="form-field"><span>Altura</span><input name="boxHeight" [(ngModel)]="draft.boxHeight" type="number" min="0" step="0.1" placeholder="7"></label></div>
               <div class="form-section-label">REFERÊNCIAS E OBSERVAÇÕES</div>
@@ -165,16 +167,35 @@ const emptyDraft = (): GameDraft => ({
           </section>
         </div>
       }
+
+      @if (detailGame; as game) {
+        <div class="modal-backdrop" (click)="closeDetails()">
+          <section class="game-dialog details-dialog" role="dialog" aria-modal="true" aria-labelledby="details-title" (click)="$event.stopPropagation()">
+            <header class="dialog-header"><div><div class="eyebrow"><span class="eyebrow-line"></span> FICHA DO JOGO</div><h2 id="details-title">{{ game.name }}</h2>@if (game.originalName) { <p>{{ game.originalName }}</p> }</div><button class="dialog-close" type="button" aria-label="Fechar" (click)="closeDetails()">×</button></header>
+            <div class="game-details">
+              <section class="detail-section"><h3>Dados técnicos</h3><div class="detail-grid"><div><span>Jogadores</span><strong>{{ playerRange(game) }}</strong></div><div><span>Número ideal</span><strong>{{ game.idealPlayers || 'Não informado' }}</strong></div><div><span>Duração</span><strong>{{ timeRange(game) }}</strong></div><div><span>Idade mínima</span><strong>{{ game.age === null ? 'Não informada' : game.age + '+' }}</strong></div><div><span>Ano</span><strong>{{ game.year || 'Não informado' }}</strong></div><div><span>Complexidade BGG</span><strong>{{ game.complexity ? game.complexity + '/5' : 'Não informada' }}</strong></div></div></section>
+              <section class="detail-section"><h3>Créditos e edição</h3><div class="detail-grid"><div><span>Designer</span><strong>{{ game.designers || 'Não informado' }}</strong></div><div><span>Artista(s)</span><strong>{{ game.artists || 'Não informado' }}</strong></div><div><span>Editora(s)</span><strong>{{ game.publishers || 'Não informada' }}</strong></div><div><span>Edição</span><strong>{{ game.edition || 'Não informada' }}</strong></div><div><span>Idioma</span><strong>{{ game.language || 'Não informado' }}</strong></div><div><span>Categoria</span><strong>{{ game.categories.join(', ') || 'Não informada' }}</strong></div></div></section>
+              <section class="detail-section"><h3>Lista de mecanismos</h3>@if (game.mechanics.length) { <div class="detail-chips">@for (mechanic of game.mechanics; track mechanic) { <span>{{ mechanic }}</span> }</div> } @else { <p class="detail-empty">Nenhum mecanismo informado.</p> }</section>
+              <section class="detail-section"><h3>Dimensões da caixa</h3><p>{{ dimension(game.boxLength) }} × {{ dimension(game.boxWidth) }} × {{ dimension(game.boxHeight) }} cm <small>(comprimento × largura × altura)</small></p></section>
+              @if (game.notes) { <section class="detail-section"><h3>Anotações</h3><p>{{ game.notes }}</p></section> }
+              <section class="detail-section"><h3>Referências</h3><div class="detail-grid"><div><span>ID BoardGameGeek</span><strong>{{ game.bggId || 'Não informado' }}</strong></div></div><div class="game-links">@if (game.bggUrl) { <a [href]="game.bggUrl" target="_blank" rel="noreferrer">BoardGameGeek ↗</a> } @if (game.ludopediaUrl) { <a [href]="game.ludopediaUrl" target="_blank" rel="noreferrer">Ludopedia ↗</a> }</div></section>
+              <div class="dialog-actions"><button class="secondary-button" type="button" (click)="closeDetails()">Fechar</button><button class="primary-button" type="button" (click)="closeDetails(); editGame(game)">Editar jogo</button></div>
+            </div>
+          </section>
+        </div>
+      }
     </div>
   `,
   styles: []
 })
 class AppComponent {
   private readonly storageKey = 'aulufa-boardgames-v1';
+  private readonly deletedStorageKey = 'aulufa-boardgames-deleted-v1';
   navItems = [{ id: 'pendengas-da-vida', label: 'Pendengas da vida' }, { id: 'cadastro-jogos', label: 'Cadastro de Jogos' }];
   activeItem = 'pendengas-da-vida';
   menuOpen = false;
   dialogOpen = false;
+  detailGame: BoardGame | null = null;
   editingId = '';
   draft: GameDraft = emptyDraft();
   games: BoardGame[] = this.loadGames();
@@ -203,15 +224,28 @@ class AppComponent {
   closeMenu(): void { this.menuOpen = false; }
   openNewGame(): void { this.editingId = ''; this.draft = emptyDraft(); this.dialogOpen = true; }
   closeDialog(): void { this.dialogOpen = false; }
+  viewGame(game: BoardGame): void { this.detailGame = game; }
+  closeDetails(): void { this.detailGame = null; }
   clearFilters(): void { this.searchTerm = ''; this.playerFilter = ''; this.categoryFilter = ''; }
   initials(name: string): string { return name.trim().split(/\s+/).slice(0, 2).map((word) => word[0]).join('').toLocaleUpperCase('pt-BR'); }
   playerRange(game: BoardGame): string { return game.playersMin && game.playersMax ? `${game.playersMin}–${game.playersMax} jogadores` : game.playersMin ? `${game.playersMin}+ jogadores` : 'Jogadores não informados'; }
   timeRange(game: BoardGame): string { return game.timeMin && game.timeMax ? `${game.timeMin}–${game.timeMax} min` : game.timeMin ? `${game.timeMin} min` : 'Duração não informada'; }
   dimension(value: number | null): string { return value === null ? '—' : String(value).replace('.', ','); }
+  deleteGame(game: BoardGame): void {
+    if (!globalThis.confirm(`Excluir “${game.name}” da coleção?`)) return;
+    this.games = this.games.filter((entry) => entry.id !== game.id);
+    try {
+      const deleted = JSON.parse(globalThis.localStorage?.getItem(this.deletedStorageKey) || '[]') as string[];
+      if (!deleted.includes(game.id)) deleted.push(game.id);
+      globalThis.localStorage?.setItem(this.deletedStorageKey, JSON.stringify(deleted));
+    } catch { /* A lista continua atualizada nesta sessão. */ }
+    this.persistGames();
+    if (this.detailGame?.id === game.id) this.closeDetails();
+  }
 
   editGame(game: BoardGame): void {
     this.editingId = game.id;
-    this.draft = { ...emptyDraft(), ...game, categories: game.categories.join(', '), mechanics: game.mechanics.join(', '),
+    this.draft = { ...emptyDraft(), ...game, idealPlayers: game.idealPlayers || '', categories: game.categories.join(', '), mechanics: game.mechanics.join(', '),
       year: this.asText(game.year), playersMin: this.asText(game.playersMin), playersMax: this.asText(game.playersMax),
       timeMin: this.asText(game.timeMin), timeMax: this.asText(game.timeMax), age: this.asText(game.age), complexity: this.asText(game.complexity),
       boxLength: this.asText(game.boxLength), boxWidth: this.asText(game.boxWidth), boxHeight: this.asText(game.boxHeight) };
@@ -226,6 +260,7 @@ class AppComponent {
       name: this.draft.name.trim(), originalName: this.draft.originalName.trim(), year: this.toNumber(this.draft.year),
       playersMin: this.toNumber(this.draft.playersMin), playersMax: this.toNumber(this.draft.playersMax),
       timeMin: this.toNumber(this.draft.timeMin), timeMax: this.toNumber(this.draft.timeMax), age: this.toNumber(this.draft.age),
+      idealPlayers: this.draft.idealPlayers.trim(),
       complexity: this.toNumber(this.draft.complexity), designers: this.draft.designers.trim(), artists: this.draft.artists.trim(),
       publishers: this.draft.publishers.trim(), edition: this.draft.edition.trim(), language: this.draft.language.trim(),
       categories: this.parseList(this.draft.categories), mechanics: this.parseList(this.draft.mechanics), bggId: this.draft.bggId.trim(),
@@ -246,10 +281,14 @@ class AppComponent {
   private asText(value: number | null): string { return value === null ? '' : String(value); }
   private loadGames(): BoardGame[] {
     let saved: BoardGame[] = [];
+    let deleted: string[] = [];
     try { const value = globalThis.localStorage?.getItem(this.storageKey); saved = value ? JSON.parse(value) as BoardGame[] : []; }
     catch { saved = []; }
+    try { deleted = JSON.parse(globalThis.localStorage?.getItem(this.deletedStorageKey) || '[]') as string[]; }
+    catch { deleted = []; }
     const merged = new Map(importedCollection.map((game) => [game.id, game]));
     for (const game of saved) merged.set(game.id, game);
+    for (const id of deleted) merged.delete(id);
     return [...merged.values()];
   }
   private persistGames(): void { try { globalThis.localStorage?.setItem(this.storageKey, JSON.stringify(this.games)); } catch (error) { console.warn('Não foi possível salvar os jogos neste navegador.', error); } }
