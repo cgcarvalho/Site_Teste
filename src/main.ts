@@ -107,8 +107,9 @@ const emptyDraft = (): GameDraft => ({
             <div class="filter-panel">
               <label class="search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4"/><path d="m15.5 15.5 4 4"/></svg><input type="search" placeholder="Buscar por jogo, designer ou editora" [(ngModel)]="searchTerm" aria-label="Buscar jogos"></label>
               <label class="filter-field"><span>JOGADORES</span><select [(ngModel)]="playerFilter" aria-label="Filtrar por número de jogadores"><option value="">Qualquer número</option>@for (n of playerOptions; track n) { <option [value]="n">{{ n }} {{ n === 1 ? 'jogador' : 'jogadores' }}</option> }</select></label>
+              <label class="filter-field"><span>IDEAL PARA</span><select [(ngModel)]="idealPlayersFilter" aria-label="Filtrar por número ideal de jogadores"><option value="">Qualquer número ideal</option>@for (n of idealPlayerOptions; track n) { <option [value]="n">{{ n }} {{ n === 1 ? 'jogador' : 'jogadores' }}</option> }</select></label>
               <label class="filter-field category-filter"><span>CATEGORIA</span><select [(ngModel)]="categoryFilter" aria-label="Filtrar por categoria"><option value="">Todas as categorias</option>@for (category of categories; track category) { <option [value]="category">{{ category }}</option> }</select></label>
-              @if (searchTerm || playerFilter || categoryFilter) { <button class="clear-filters" (click)="clearFilters()">Limpar filtros</button> }
+              @if (searchTerm || playerFilter || idealPlayersFilter || categoryFilter) { <button class="clear-filters" (click)="clearFilters()">Limpar filtros</button> }
             </div>
 
             @if (filteredGames.length > 0) {
@@ -201,17 +202,23 @@ class AppComponent {
   games: BoardGame[] = this.loadGames();
   searchTerm = '';
   playerFilter = '';
+  idealPlayersFilter = '';
   categoryFilter = '';
   playerOptions = Array.from({ length: 12 }, (_, i) => i + 1);
 
   get activeLabel(): string { return this.navItems.find((item) => item.id === this.activeItem)?.label ?? 'Pendengas da vida'; }
   get categories(): string[] { return [...new Set(this.games.flatMap((game) => game.categories))].sort((a, b) => a.localeCompare(b, 'pt-BR')); }
+  get idealPlayerOptions(): number[] {
+    return [...new Set(this.games.flatMap((game) => (game.idealPlayers.match(/\d+/g) ?? []).map(Number).filter((n) => n > 0)))].sort((a, b) => a - b);
+  }
   get filteredGames(): BoardGame[] {
     const term = this.searchTerm.trim().toLocaleLowerCase('pt-BR');
     const players = Number(this.playerFilter);
+    const idealPlayers = Number(this.idealPlayersFilter);
     return this.games.filter((game) => {
       const haystack = [game.name, game.originalName, game.designers, game.publishers, ...game.categories, ...game.mechanics].join(' ').toLocaleLowerCase('pt-BR');
-      return (!term || haystack.includes(term)) && (!players || ((game.playersMin ?? 1) <= players && (game.playersMax ?? 99) >= players)) && (!this.categoryFilter || game.categories.includes(this.categoryFilter));
+      const idealCounts = (game.idealPlayers.match(/\d+/g) ?? []).map(Number);
+      return (!term || haystack.includes(term)) && (!players || ((game.playersMin ?? 1) <= players && (game.playersMax ?? 99) >= players)) && (!idealPlayers || idealCounts.includes(idealPlayers)) && (!this.categoryFilter || game.categories.includes(this.categoryFilter));
     }).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
   }
 
@@ -226,7 +233,7 @@ class AppComponent {
   closeDialog(): void { this.dialogOpen = false; }
   viewGame(game: BoardGame): void { this.detailGame = game; }
   closeDetails(): void { this.detailGame = null; }
-  clearFilters(): void { this.searchTerm = ''; this.playerFilter = ''; this.categoryFilter = ''; }
+  clearFilters(): void { this.searchTerm = ''; this.playerFilter = ''; this.idealPlayersFilter = ''; this.categoryFilter = ''; }
   initials(name: string): string { return name.trim().split(/\s+/).slice(0, 2).map((word) => word[0]).join('').toLocaleUpperCase('pt-BR'); }
   playerRange(game: BoardGame): string { return game.playersMin && game.playersMax ? `${game.playersMin}–${game.playersMax} jogadores` : game.playersMin ? `${game.playersMin}+ jogadores` : 'Jogadores não informados'; }
   timeRange(game: BoardGame): string { return game.timeMin && game.timeMax ? `${game.timeMin}–${game.timeMax} min` : game.timeMin ? `${game.timeMin} min` : 'Duração não informada'; }
