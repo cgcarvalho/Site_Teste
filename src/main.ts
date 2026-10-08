@@ -35,7 +35,7 @@ interface GameDraft {
   name: string; originalName: string; year: string | number | null; playersMin: string | number | null; playersMax: string | number | null;
   idealPlayers: string;
   timeMin: string | number | null; timeMax: string | number | null; age: string | number | null; complexity: string | number | null; designers: string;
-  artists: string; publishers: string; edition: string; language: string; categories: string;
+  artists: string; publishers: string; edition: string; language: string; categories: string[];
   mechanics: string; bggId: string; bggUrl: string; ludopediaUrl: string;
   boxLength: string | number | null; boxWidth: string | number | null; boxHeight: string | number | null; notes: string;
 }
@@ -43,7 +43,7 @@ interface GameDraft {
 const emptyDraft = (): GameDraft => ({
   name: '', originalName: '', year: '', playersMin: '', playersMax: '', idealPlayers: '', timeMin: '', timeMax: '',
   age: '', complexity: '', designers: '', artists: '', publishers: '', edition: '', language: '',
-  categories: '', mechanics: '', bggId: '', bggUrl: '', ludopediaUrl: '', boxLength: '',
+  categories: [], mechanics: '', bggId: '', bggUrl: '', ludopediaUrl: '', boxLength: '',
   boxWidth: '', boxHeight: '', notes: ''
 });
 
@@ -158,7 +158,7 @@ const emptyDraft = (): GameDraft => ({
               <div class="form-section-label">IDENTIFICAÇÃO</div>
               <div class="form-grid"><label class="form-field span-two"><span>Nome do jogo *</span><input name="name" [(ngModel)]="draft.name" required maxlength="120" placeholder="Ex.: Catan"></label><label class="form-field"><span>Nome original</span><input name="originalName" [(ngModel)]="draft.originalName" placeholder="Ex.: The Settlers of Catan"></label><label class="form-field"><span>Ano de publicação</span><input name="year" [(ngModel)]="draft.year" type="number" min="1900" max="2100" placeholder="1995"></label><label class="form-field"><span>Edição</span><input name="edition" [(ngModel)]="draft.edition" placeholder="Ex.: edição brasileira"></label><label class="form-field"><span>Idioma</span><input name="language" [(ngModel)]="draft.language" placeholder="Português"></label></div>
               <div class="form-section-label">DADOS TÉCNICOS</div>
-              <div class="form-grid"><label class="form-field"><span>Jogadores · mínimo</span><input name="playersMin" [(ngModel)]="draft.playersMin" type="number" min="1" max="100" placeholder="2"></label><label class="form-field"><span>Jogadores · máximo</span><input name="playersMax" [(ngModel)]="draft.playersMax" type="number" min="1" max="100" placeholder="4"></label><label class="form-field"><span>Número ideal de jogadores</span><input name="idealPlayers" [(ngModel)]="draft.idealPlayers" placeholder="Ex.: 2, 3 (ou todos)"></label><label class="form-field"><span>Tempo mínimo (min)</span><input name="timeMin" [(ngModel)]="draft.timeMin" type="number" min="1" placeholder="60"></label><label class="form-field"><span>Tempo máximo (min)</span><input name="timeMax" [(ngModel)]="draft.timeMax" type="number" min="1" placeholder="120"></label><label class="form-field"><span>Idade recomendada (anos)</span><input name="age" [(ngModel)]="draft.age" type="number" min="0" max="99" placeholder="10"></label><label class="form-field"><span>Complexidade BGG (1 a 5)</span><input name="complexity" [(ngModel)]="draft.complexity" type="number" min="1" max="5" step="0.01" placeholder="2.28"></label><label class="form-field"><span>Designer</span><input name="designers" [(ngModel)]="draft.designers" placeholder="Separe por vírgula"></label><label class="form-field"><span>Artista(s)</span><input name="artists" [(ngModel)]="draft.artists" placeholder="Separe por vírgula"></label><label class="form-field span-two"><span>Editora(s)</span><input name="publishers" [(ngModel)]="draft.publishers" placeholder="Separe por vírgula"></label><label class="form-field"><span>Categorias</span><input name="categories" [(ngModel)]="draft.categories" placeholder="Estratégia, Família"></label><label class="form-field"><span>Lista de mecanismos</span><input name="mechanics" [(ngModel)]="draft.mechanics" placeholder="Negociação, alocação de dados"></label></div>
+              <div class="form-grid"><label class="form-field"><span>Jogadores · mínimo</span><input name="playersMin" [(ngModel)]="draft.playersMin" type="number" min="1" max="100" placeholder="2"></label><label class="form-field"><span>Jogadores · máximo</span><input name="playersMax" [(ngModel)]="draft.playersMax" type="number" min="1" max="100" placeholder="4"></label><label class="form-field"><span>Número ideal de jogadores</span><input name="idealPlayers" [(ngModel)]="draft.idealPlayers" placeholder="Ex.: 2, 3 (ou todos)"></label><label class="form-field"><span>Tempo mínimo (min)</span><input name="timeMin" [(ngModel)]="draft.timeMin" type="number" min="1" placeholder="60"></label><label class="form-field"><span>Tempo máximo (min)</span><input name="timeMax" [(ngModel)]="draft.timeMax" type="number" min="1" placeholder="120"></label><label class="form-field"><span>Idade recomendada (anos)</span><input name="age" [(ngModel)]="draft.age" type="number" min="0" max="99" placeholder="10"></label><label class="form-field"><span>Complexidade BGG (1 a 5)</span><input name="complexity" [(ngModel)]="draft.complexity" type="number" min="1" max="5" step="0.01" placeholder="2.28"></label><label class="form-field"><span>Designer</span><input name="designers" [(ngModel)]="draft.designers" placeholder="Separe por vírgula"></label><label class="form-field"><span>Artista(s)</span><input name="artists" [(ngModel)]="draft.artists" placeholder="Separe por vírgula"></label><label class="form-field span-two"><span>Editora(s)</span><input name="publishers" [(ngModel)]="draft.publishers" placeholder="Separe por vírgula"></label><div class="form-field span-two"><span>Categorias</span><div class="category-options">@for (category of categoryOptions; track category) { <label class="category-option"><input type="checkbox" [checked]="draft.categories.includes(category)" (change)="toggleDraftCategory(category, $event)"><span>{{ category }}</span></label> }</div><div class="category-add"><input name="newCategory" [(ngModel)]="newCategory" placeholder="Adicionar outra categoria" (keydown.enter)="$event.preventDefault(); addDraftCategory()"><button type="button" class="secondary-button" (click)="addDraftCategory()">Adicionar</button></div></div><label class="form-field span-two"><span>Lista de mecanismos</span><input name="mechanics" [(ngModel)]="draft.mechanics" placeholder="Negociação, alocação de dados"></label></div>
               <div class="form-section-label">DIMENSÕES DA CAIXA <small>em centímetros</small></div>
               <div class="form-grid dimension-grid"><label class="form-field"><span>Comprimento</span><input name="boxLength" [(ngModel)]="draft.boxLength" type="number" min="0" step="0.1" placeholder="30"></label><label class="form-field"><span>Largura</span><input name="boxWidth" [(ngModel)]="draft.boxWidth" type="number" min="0" step="0.1" placeholder="30"></label><label class="form-field"><span>Altura</span><input name="boxHeight" [(ngModel)]="draft.boxHeight" type="number" min="0" step="0.1" placeholder="7"></label></div>
               <div class="form-section-label">REFERÊNCIAS E OBSERVAÇÕES</div>
@@ -199,6 +199,7 @@ class AppComponent {
   detailGame: BoardGame | null = null;
   editingId = '';
   draft: GameDraft = emptyDraft();
+  newCategory = '';
   games: BoardGame[] = this.loadGames();
   searchTerm = '';
   playerFilter = '';
@@ -208,6 +209,7 @@ class AppComponent {
 
   get activeLabel(): string { return this.navItems.find((item) => item.id === this.activeItem)?.label ?? 'Pendengas da vida'; }
   get categories(): string[] { return [...new Set(this.games.flatMap((game) => game.categories))].sort((a, b) => a.localeCompare(b, 'pt-BR')); }
+  get categoryOptions(): string[] { return [...new Set([...this.categories, ...this.draft.categories])].sort((a, b) => a.localeCompare(b, 'pt-BR')); }
   get idealPlayerOptions(): number[] {
     return [...new Set(this.games.flatMap((game) => (game.idealPlayers.match(/\d+/g) ?? []).map(Number).filter((n) => n > 0)))].sort((a, b) => a - b);
   }
@@ -229,7 +231,7 @@ class AppComponent {
   selectItem(id: string): void { this.activeItem = id; this.closeMenu(); }
   toggleMenu(): void { this.menuOpen = !this.menuOpen; }
   closeMenu(): void { this.menuOpen = false; }
-  openNewGame(): void { this.editingId = ''; this.draft = emptyDraft(); this.dialogOpen = true; }
+  openNewGame(): void { this.editingId = ''; this.draft = emptyDraft(); this.newCategory = ''; this.dialogOpen = true; }
   closeDialog(): void { this.dialogOpen = false; }
   viewGame(game: BoardGame): void { this.detailGame = game; }
   closeDetails(): void { this.detailGame = null; }
@@ -250,9 +252,23 @@ class AppComponent {
     if (this.detailGame?.id === game.id) this.closeDetails();
   }
 
+  toggleDraftCategory(category: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.draft.categories = checked ? [...new Set([...this.draft.categories, category])] : this.draft.categories.filter((item) => item !== category);
+  }
+  addDraftCategory(): void {
+    const category = this.newCategory.trim();
+    if (!category) return;
+    if (!this.draft.categories.some((item) => item.toLocaleLowerCase('pt-BR') === category.toLocaleLowerCase('pt-BR'))) {
+      this.draft.categories = [...this.draft.categories, category];
+    }
+    this.newCategory = '';
+  }
+
   editGame(game: BoardGame): void {
     this.editingId = game.id;
-    this.draft = { ...emptyDraft(), ...game, idealPlayers: game.idealPlayers || '', categories: game.categories.join(', '), mechanics: game.mechanics.join(', '),
+    this.newCategory = '';
+    this.draft = { ...emptyDraft(), ...game, idealPlayers: game.idealPlayers || '', categories: [...game.categories], mechanics: game.mechanics.join(', '),
       year: this.asText(game.year), playersMin: this.asText(game.playersMin), playersMax: this.asText(game.playersMax),
       timeMin: this.asText(game.timeMin), timeMax: this.asText(game.timeMax), age: this.asText(game.age), complexity: this.asText(game.complexity),
       boxLength: this.asText(game.boxLength), boxWidth: this.asText(game.boxWidth), boxHeight: this.asText(game.boxHeight) };
@@ -270,7 +286,7 @@ class AppComponent {
       idealPlayers: this.draft.idealPlayers.trim(),
       complexity: this.toNumber(this.draft.complexity), designers: this.draft.designers.trim(), artists: this.draft.artists.trim(),
       publishers: this.draft.publishers.trim(), edition: this.draft.edition.trim(), language: this.draft.language.trim(),
-      categories: this.parseList(this.draft.categories), mechanics: this.parseList(this.draft.mechanics), bggId: this.draft.bggId.trim(),
+      categories: [...this.draft.categories], mechanics: this.parseList(this.draft.mechanics), bggId: this.draft.bggId.trim(),
       bggUrl: this.draft.bggUrl.trim(), ludopediaUrl: this.draft.ludopediaUrl.trim(), boxLength: this.toNumber(this.draft.boxLength),
       boxWidth: this.toNumber(this.draft.boxWidth), boxHeight: this.toNumber(this.draft.boxHeight), notes: this.draft.notes.trim()
     };
