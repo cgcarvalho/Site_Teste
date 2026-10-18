@@ -40,6 +40,13 @@ interface GameDraft {
   boxLength: string | number | null; boxWidth: string | number | null; boxHeight: string | number | null; notes: string;
 }
 
+interface ShelfDraft { id: string; width: number | null; depth: number | null; height: number | null; }
+interface SizedShelf extends ShelfDraft { width: number; depth: number; height: number; }
+interface ShelfBox { game: BoardGame; x: number; y: number; width: number; depth: number; rotated: boolean; }
+interface ShelfLayout { shelf: SizedShelf; boxes: ShelfBox[]; usedArea: number; }
+interface FreeRect { x: number; y: number; width: number; depth: number; }
+interface PlacementChoice { shelfIndex: number; rectIndex: number; width: number; depth: number; rotated: boolean; score: number[]; }
+
 const emptyDraft = (): GameDraft => ({
   name: '', originalName: '', year: '', playersMin: '', playersMax: '', idealPlayers: '', timeMin: '', timeMax: '',
   age: '', complexity: '', designers: '', artists: '', publishers: '', edition: '', language: '',
@@ -65,6 +72,8 @@ const emptyDraft = (): GameDraft => ({
               [href]="'#' + item.id" (click)="selectItem(item.id)">
               @if (item.id === 'cadastro-jogos') {
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.75h10a2.25 2.25 0 0 1 2.25 2.25v10A2.25 2.25 0 0 1 17 19.25H7A2.25 2.25 0 0 1 4.75 17V7A2.25 2.25 0 0 1 7 4.75Z"/><path d="M8.5 9.5h7M8.5 13h3M16.5 15.5h.01"/></svg>
+              } @else if (item.id === 'organizar-estante') {
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.75h16v14.5H4zM4 10h16M4 15.25h16M8 4.75V10m8-5.25V10m-5 0v5.25m5 0v4"/></svg>
               } @else {
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.75h10.25M9 12h10.25M9 17.25h10.25M4.75 6.75h.5M4.75 12h.5M4.75 17.25h.5"/></svg>
               }
@@ -140,6 +149,43 @@ const emptyDraft = (): GameDraft => ({
             <div class="data-note"><span class="data-note-icon">◷</span> Coleção importada do BoardGameGeek: 304 jogos e expansões. Edições e novos cadastros ficam salvos neste navegador.</div>
             <footer class="page-footer"><span>Controle da Vida Aulufa</span><span>Um projeto nosso <span class="heart">♥</span></span></footer>
           </div>
+        } @else if (activeItem === 'organizar-estante') {
+          <div class="games-page page-container" id="organizar-estante">
+            <div class="games-heading"><div><div class="eyebrow"><span class="eyebrow-line"></span> NOSSA COLEÇÃO</div><h1>Organizar estante <span class="wave" aria-hidden="true">✳</span></h1><p class="intro">Informe as medidas úteis de cada prateleira e encontre uma disposição compacta para as caixas.</p></div></div>
+            <section class="shelf-settings">
+              <div class="shelf-section-heading"><div><div class="section-kicker">MEDIDAS INTERNAS · CM</div><h2>Suas prateleiras</h2></div><button class="secondary-button" type="button" (click)="addShelf()">＋ Adicionar prateleira</button></div>
+              @for (shelf of shelves; track shelf.id; let i = $index) {
+                <div class="shelf-input-row">
+                  <strong>Prateleira {{ i + 1 }}</strong>
+                  <label class="form-field"><span>Largura</span><input type="number" min="1" step="0.1" [(ngModel)]="shelf.width" (ngModelChange)="shelfSettingsChanged()" placeholder="80"></label>
+                  <label class="form-field"><span>Profundidade</span><input type="number" min="1" step="0.1" [(ngModel)]="shelf.depth" (ngModelChange)="shelfSettingsChanged()" placeholder="30"></label>
+                  <label class="form-field"><span>Altura livre</span><input type="number" min="1" step="0.1" [(ngModel)]="shelf.height" (ngModelChange)="shelfSettingsChanged()" placeholder="35"></label>
+                  <button class="delete-button" type="button" [disabled]="shelves.length === 1" (click)="removeShelf(shelf.id)" [attr.aria-label]="'Remover prateleira ' + (i + 1)">×</button>
+                </div>
+              }
+              <div class="shelf-controls"><span>{{ packableGames.length }} caixas com dimensões completas · {{ gamesWithoutBoxDimensions.length }} sem medidas</span><button class="primary-button" type="button" (click)="calculateShelfLayout()">Organizar caixas</button></div>
+            </section>
+            @if (layoutMessage) { <div class="shelf-message" role="status">{{ layoutMessage }}</div> }
+            @if (shelfLayouts.length) {
+              <div class="shelf-results"><div class="catalog-toolbar"><div class="catalog-title"><div><div class="section-kicker">DISPOSIÇÃO SUGERIDA</div><h2>{{ placedBoxCount }} de {{ packableGames.length }} caixas acomodadas</h2></div></div><span class="result-count">{{ shelfLayouts.length }} prateleiras usadas</span></div>
+                @for (layout of shelfLayouts; track layout.shelf.id; let i = $index) {
+                  <section class="shelf-result-card"><div class="shelf-result-heading"><h3>Prateleira {{ shelfNumber(layout.shelf.id) }}</h3><span>{{ layout.shelf.width }} × {{ layout.shelf.depth }} × {{ layout.shelf.height }} cm · {{ shelfUtilization(layout) }}% ocupado</span></div>
+                    <div class="shelf-map" [style.aspect-ratio]="layout.shelf.width + ' / ' + layout.shelf.depth" role="img" [attr.aria-label]="'Mapa da prateleira ' + shelfNumber(layout.shelf.id)">
+                      @for (box of layout.boxes; track box.game.id) {
+                        <div class="shelf-box" [style.left.%]="box.x / layout.shelf.width * 100" [style.top.%]="box.y / layout.shelf.depth * 100" [style.width.%]="box.width / layout.shelf.width * 100" [style.height.%]="box.depth / layout.shelf.depth * 100" [title]="box.game.name + ' · ' + box.width + ' × ' + box.depth + ' cm'">
+                          @if (box.width / layout.shelf.width > 0.1 && box.depth / layout.shelf.depth > 0.2) { <span>{{ box.game.name }}</span> }
+                        </div>
+                      }
+                    </div>
+                    <div class="shelf-box-list">@for (box of layout.boxes; track box.game.id) { <div><strong>{{ box.game.name }}</strong><span>{{ box.width }} × {{ box.depth }} × {{ box.game.boxHeight }} cm{{ box.rotated ? ' · girada na base' : '' }}</span></div> }</div>
+                  </section>
+                }
+              </div>
+              @if (unplacedGames.length) { <section class="unplaced-card"><h3>Caixas que não couberam ({{ unplacedGames.length }})</h3><p>Revise as medidas das prateleiras ou as dimensões cadastradas desses jogos.</p><div class="unplaced-list">@for (game of unplacedGames; track game.id) { <span>{{ game.name }}</span> }</div></section> }
+            }
+            @if (gamesWithoutBoxDimensions.length) { <p class="shelf-footnote">Jogos sem comprimento, largura e altura cadastrados não entram no cálculo. Complete as dimensões no Cadastro de Jogos para incluí-los.</p> }
+            <footer class="page-footer"><span>Controle da Vida Aulufa</span><span>Um projeto nosso <span class="heart">♥</span></span></footer>
+          </div>
         } @else {
           <div class="page-container">
             <div class="welcome-row"><div><div class="eyebrow"><span class="eyebrow-line"></span> NOSSO CANTINHO</div><h1>Oi, vocês <span class="wave" aria-hidden="true">✳</span></h1><p class="intro">Um espaço para cuidar das pequenas coisas e abrir espaço para as grandes.</p></div><div class="date-card"><span class="date-icon">☀</span><span>Feito para a vida<br><strong>real, do jeitinho que ela é.</strong></span></div></div>
@@ -192,7 +238,8 @@ const emptyDraft = (): GameDraft => ({
 class AppComponent {
   private readonly storageKey = 'aulufa-boardgames-v1';
   private readonly deletedStorageKey = 'aulufa-boardgames-deleted-v1';
-  navItems = [{ id: 'pendengas-da-vida', label: 'Pendengas da vida' }, { id: 'cadastro-jogos', label: 'Cadastro de Jogos' }];
+  private readonly shelfStorageKey = 'aulufa-shelves-v1';
+  navItems = [{ id: 'pendengas-da-vida', label: 'Pendengas da vida' }, { id: 'cadastro-jogos', label: 'Cadastro de Jogos' }, { id: 'organizar-estante', label: 'Organizar estante' }];
   activeItem = 'pendengas-da-vida';
   menuOpen = false;
   dialogOpen = false;
@@ -201,6 +248,10 @@ class AppComponent {
   draft: GameDraft = emptyDraft();
   newCategory = '';
   games: BoardGame[] = this.loadGames();
+  shelves: ShelfDraft[] = this.loadShelves();
+  shelfLayouts: ShelfLayout[] = [];
+  unplacedGames: BoardGame[] = [];
+  layoutMessage = '';
   searchTerm = '';
   playerFilter = '';
   idealPlayersFilter = '';
@@ -208,6 +259,9 @@ class AppComponent {
   playerOptions = Array.from({ length: 12 }, (_, i) => i + 1);
 
   get activeLabel(): string { return this.navItems.find((item) => item.id === this.activeItem)?.label ?? 'Pendengas da vida'; }
+  get packableGames(): BoardGame[] { return this.games.filter((game) => this.validDimension(game.boxLength) && this.validDimension(game.boxWidth) && this.validDimension(game.boxHeight)); }
+  get gamesWithoutBoxDimensions(): BoardGame[] { return this.games.filter((game) => !this.validDimension(game.boxLength) || !this.validDimension(game.boxWidth) || !this.validDimension(game.boxHeight)); }
+  get placedBoxCount(): number { return this.shelfLayouts.reduce((sum, layout) => sum + layout.boxes.length, 0); }
   get categories(): string[] { return [...new Set(this.games.flatMap((game) => game.categories))].sort((a, b) => a.localeCompare(b, 'pt-BR')); }
   get categoryOptions(): string[] { return [...new Set([...this.categories, ...this.draft.categories])].sort((a, b) => a.localeCompare(b, 'pt-BR')); }
   get idealPlayerOptions(): number[] {
@@ -231,6 +285,55 @@ class AppComponent {
   selectItem(id: string): void { this.activeItem = id; this.closeMenu(); }
   toggleMenu(): void { this.menuOpen = !this.menuOpen; }
   closeMenu(): void { this.menuOpen = false; }
+  addShelf(): void { this.shelves = [...this.shelves, this.newShelf()]; this.shelfSettingsChanged(); }
+  removeShelf(id: string): void { if (this.shelves.length > 1) { this.shelves = this.shelves.filter((shelf) => shelf.id !== id); this.shelfSettingsChanged(); } }
+  shelfSettingsChanged(): void { this.shelfLayouts = []; this.unplacedGames = []; this.layoutMessage = ''; try { globalThis.localStorage?.setItem(this.shelfStorageKey, JSON.stringify(this.shelves)); } catch { /* Medidas preservadas nesta sessão. */ } }
+  shelfNumber(id: string): number { return this.shelves.findIndex((shelf) => shelf.id === id) + 1; }
+  shelfUtilization(layout: ShelfLayout): number { return Math.round(layout.usedArea / ((layout.shelf.width ?? 0) * (layout.shelf.depth ?? 0)) * 100); }
+  calculateShelfLayout(): void {
+    const validShelves = this.shelves.filter((s): s is SizedShelf => this.validDimension(s.width) && this.validDimension(s.depth) && this.validDimension(s.height));
+    if (!validShelves.length) { this.layoutMessage = 'Preencha largura, profundidade e altura livre de pelo menos uma prateleira.'; this.shelfLayouts = []; return; }
+    if (!this.packableGames.length) { this.layoutMessage = 'Nenhum jogo tem as três dimensões da caixa cadastradas.'; this.shelfLayouts = []; return; }
+    const orders = [
+      [...this.packableGames].sort((a, b) => this.boxArea(b) - this.boxArea(a)),
+      [...this.packableGames].sort((a, b) => this.boxSide(b) - this.boxSide(a) || this.boxArea(b) - this.boxArea(a)),
+      [...this.packableGames].sort((a, b) => (b.boxHeight ?? 0) - (a.boxHeight ?? 0) || this.boxArea(b) - this.boxArea(a))
+    ];
+    let best: ShelfLayout[] = []; let bestCount = -1; let bestArea = -1;
+    for (const order of orders) {
+      const layouts = validShelves.map((shelf) => ({ shelf, boxes: [] as ShelfBox[], usedArea: 0 }));
+      const freeRects: FreeRect[][] = validShelves.map((shelf) => [{ x: 0, y: 0, width: shelf.width, depth: shelf.depth }]);
+      for (const game of order) {
+        let choice: PlacementChoice | null = null;
+        layouts.forEach((layout, shelfIndex) => {
+          if ((game.boxHeight ?? Infinity) > layout.shelf.height!) return;
+          freeRects[shelfIndex].forEach((rect, rectIndex) => {
+            for (const rotated of [false, true]) {
+              const width = rotated ? game.boxWidth! : game.boxLength!; const depth = rotated ? game.boxLength! : game.boxWidth!;
+              if (width > rect.width || depth > rect.depth) continue;
+              const shortFit = Math.min(rect.width - width, rect.depth - depth); const longFit = Math.max(rect.width - width, rect.depth - depth);
+              const score = [shortFit, longFit, rect.width * rect.depth - width * depth, shelfIndex];
+              if (!choice || this.scoreBefore(score, choice.score)) choice = { shelfIndex, rectIndex, width, depth, rotated, score };
+            }
+          });
+        });
+        if (!choice) continue;
+        const selected = choice as unknown as PlacementChoice | null;
+        if (!selected) continue;
+        const rect = freeRects[selected.shelfIndex][selected.rectIndex];
+        layouts[selected.shelfIndex].boxes.push({ game, x: rect.x, y: rect.y, width: selected.width, depth: selected.depth, rotated: selected.rotated });
+        layouts[selected.shelfIndex].usedArea += this.boxArea(game);
+        freeRects[selected.shelfIndex] = this.splitFreeRects(freeRects[selected.shelfIndex], { x: rect.x, y: rect.y, width: selected.width, depth: selected.depth });
+      }
+      const used = layouts.filter((layout) => layout.boxes.length);
+      const count = used.reduce((sum, layout) => sum + layout.boxes.length, 0); const area = used.reduce((sum, layout) => sum + layout.usedArea, 0);
+      if (count > bestCount || (count === bestCount && area > bestArea)) { best = used; bestCount = count; bestArea = area; }
+    }
+    this.shelfLayouts = best;
+    const placed = new Set(best.flatMap((layout) => layout.boxes.map((box) => box.game.id)));
+    this.unplacedGames = this.packableGames.filter((game) => !placed.has(game.id));
+    this.layoutMessage = bestCount === 0 ? 'Nenhuma caixa coube. Confira as dimensões cadastradas e as medidas internas.' : '';
+  }
   openNewGame(): void { this.editingId = ''; this.draft = emptyDraft(); this.newCategory = ''; this.dialogOpen = true; }
   closeDialog(): void { this.dialogOpen = false; }
   viewGame(game: BoardGame): void { this.detailGame = game; }
@@ -263,6 +366,34 @@ class AppComponent {
       this.draft.categories = [...this.draft.categories, category];
     }
     this.newCategory = '';
+  }
+
+  private newShelf(): ShelfDraft { return { id: `${Date.now()}-${Math.random()}`, width: null, depth: null, height: null }; }
+  private validDimension(value: number | null): value is number { return value !== null && Number.isFinite(value) && value > 0; }
+  private boxArea(game: BoardGame): number { return (game.boxLength ?? 0) * (game.boxWidth ?? 0); }
+  private boxSide(game: BoardGame): number { return Math.max(game.boxLength ?? 0, game.boxWidth ?? 0); }
+  private scoreBefore(left: number[], right: number[]): boolean {
+    for (let i = 0; i < left.length; i++) { if (left[i] !== right[i]) return left[i] < right[i]; }
+    return false;
+  }
+  private splitFreeRects(rects: FreeRect[], placed: FreeRect): FreeRect[] {
+    const split: FreeRect[] = [];
+    for (const rect of rects) {
+      const intersects = placed.x < rect.x + rect.width && placed.x + placed.width > rect.x && placed.y < rect.y + rect.depth && placed.y + placed.depth > rect.y;
+      if (!intersects) { split.push(rect); continue; }
+      if (placed.x > rect.x) split.push({ x: rect.x, y: rect.y, width: placed.x - rect.x, depth: rect.depth });
+      if (placed.x + placed.width < rect.x + rect.width) split.push({ x: placed.x + placed.width, y: rect.y, width: rect.x + rect.width - placed.x - placed.width, depth: rect.depth });
+      if (placed.y > rect.y) split.push({ x: rect.x, y: rect.y, width: rect.width, depth: placed.y - rect.y });
+      if (placed.y + placed.depth < rect.y + rect.depth) split.push({ x: rect.x, y: placed.y + placed.depth, width: rect.width, depth: rect.y + rect.depth - placed.y - placed.depth });
+    }
+    return split.filter((rect, i) => rect.width > 0 && rect.depth > 0 && !split.some((other, j) => i !== j && other.x <= rect.x && other.y <= rect.y && other.x + other.width >= rect.x + rect.width && other.y + other.depth >= rect.y + rect.depth));
+  }
+  private loadShelves(): ShelfDraft[] {
+    try {
+      const value = globalThis.localStorage?.getItem(this.shelfStorageKey);
+      if (value) { const parsed = JSON.parse(value) as ShelfDraft[]; if (Array.isArray(parsed) && parsed.length) return parsed; }
+    } catch { /* Usa uma prateleira vazia quando não há dados válidos salvos. */ }
+    return [this.newShelf()];
   }
 
   editGame(game: BoardGame): void {
