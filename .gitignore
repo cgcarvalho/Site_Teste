@@ -3,3 +3,5 @@
 /coverage
 .angular
 .npm-cache/
+.env.local
+
