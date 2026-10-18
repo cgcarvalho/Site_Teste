@@ -127,6 +127,40 @@ h3 { margin: 16px 0 10px; color: #355441; font: 700 23px/1.32 'Manrope', sans-se
 
 /* Board game catalog */
 .games-page { padding-top: 48px; }
+.shelf-settings, .shelf-result-card, .unplaced-card { padding: 20px; border: 1px solid #edede6; border-radius: 11px; background: #fffefa; }
+.shelf-section-heading, .shelf-controls, .shelf-result-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.shelf-section-heading { margin-bottom: 17px; }
+.shelf-section-heading h2 { margin-top: 4px; }
+.shelf-section-heading .secondary-button { min-height: 35px; font-size: 10px; }
+.shelf-input-row { display: grid; grid-template-columns: minmax(95px, 1.2fr) repeat(3, minmax(90px, 1fr)) 30px; align-items: end; gap: 12px; padding: 13px 0; border-top: 1px solid #f0f0e9; }
+.shelf-input-row > strong { padding-bottom: 10px; color: #526957; font: 600 11px 'Manrope', sans-serif; }
+.shelf-input-row .form-field { gap: 5px; }
+.shelf-input-row .form-field input { min-height: 35px; padding: 8px 9px; border: 1px solid #e5e8de; border-radius: 7px; outline: 0; background: #fff; color: #4e6353; font: 10px 'DM Sans', sans-serif; }
+.shelf-input-row .form-field input:focus { border-color: #91aa91; box-shadow: 0 0 0 2px #91aa9122; }
+.shelf-input-row .delete-button { margin-bottom: 5px; }
+.shelf-input-row .delete-button:disabled { opacity: .35; cursor: not-allowed; }
+.shelf-controls { margin-top: 12px; padding-top: 16px; border-top: 1px solid #f0f0e9; color: #92998c; font-size: 9px; }
+.shelf-controls .primary-button { min-height: 36px; font-size: 10px; }
+.shelf-message { margin-top: 14px; padding: 12px 14px; border: 1px solid #eadcc7; border-radius: 8px; background: #fbf6eb; color: #8a7250; font-size: 10px; }
+.shelf-results { margin-top: 28px; }
+.shelf-result-card { margin-top: 12px; }
+.shelf-result-heading { align-items: baseline; margin-bottom: 14px; }
+.shelf-result-heading h3, .unplaced-card h3 { margin: 0; color: #3c5945; font: 700 13px 'Manrope', sans-serif; }
+.shelf-result-heading > span { color: #90988b; font-size: 9px; }
+.shelf-map { position: relative; width: 100%; min-height: 120px; max-height: 340px; overflow: hidden; border: 2px solid #84947b; border-radius: 5px; background-color: #f4f3e9; background-image: linear-gradient(#e3e5d9 1px, transparent 1px), linear-gradient(90deg, #e3e5d9 1px, transparent 1px); background-size: 18px 18px; }
+.shelf-box { position: absolute; display: grid; place-items: center; overflow: hidden; padding: 3px; border: 1px solid #849977; border-radius: 3px; background: #dfe9d8; color: #425b45; text-align: center; }
+.shelf-box:nth-child(3n + 2) { border-color: #c1a16a; background: #f0e8d5; color: #705d3e; }
+.shelf-box:nth-child(3n) { border-color: #91aaa0; background: #dfeae4; color: #506c61; }
+.shelf-box span { display: -webkit-box; overflow: hidden; font-size: clamp(6px, .72vw, 9px); line-height: 1.2; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.shelf-box-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; margin-top: 13px; }
+.shelf-box-list > div { display: flex; justify-content: space-between; gap: 8px; color: #889285; font-size: 8px; }
+.shelf-box-list strong { overflow: hidden; color: #5c705e; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.shelf-box-list span { flex: 0 0 auto; }
+.unplaced-card { margin-top: 14px; border-color: #eee5d7; background: #fdfaf3; }
+.unplaced-card p, .shelf-footnote { margin: 7px 0 0; color: #92988b; font-size: 9px; line-height: 1.6; }
+.unplaced-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.unplaced-list span { padding: 5px 8px; border-radius: 99px; background: #f2eee4; color: #786b52; font-size: 8px; }
+.shelf-footnote { margin-top: 13px; text-align: center; }
 .games-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 30px; }
 .games-heading h1 { margin-top: 12px; font-size: 31px; }
 .primary-button, .secondary-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 16px; border: 1px solid #365b43; border-radius: 8px; background: #365b43; color: #fffdf5; font-size: 11px; font-weight: 600; cursor: pointer; transition: background .15s, transform .15s, opacity .15s; }
@@ -246,6 +280,14 @@ h3 { margin: 16px 0 10px; color: #355441; font: 700 23px/1.32 'Manrope', sans-se
   .filter-field { flex: 1; }
   .category-filter { min-width: 130px; }
   .clear-filters { padding: 8px; }
+  .shelf-input-row { grid-template-columns: minmax(0, 1fr) 30px; gap: 9px; }
+  .shelf-input-row > strong { grid-column: 1; padding: 0; }
+  .shelf-input-row .delete-button { grid-column: 2; grid-row: 1; }
+  .shelf-input-row .form-field { grid-column: span 2; }
+  .shelf-controls { align-items: flex-start; flex-direction: column; }
+  .shelf-controls .primary-button { width: 100%; }
+  .shelf-box-list { grid-template-columns: 1fr; }
+  .shelf-result-heading { align-items: flex-start; flex-direction: column; gap: 5px; }
 }
 @media (max-width: 520px) {
   .category-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
