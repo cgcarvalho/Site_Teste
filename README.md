@@ -13,7 +13,7 @@ npm start
 
 A página **Casa inteligente** usa o OAuth do Home Assistant para mostrar e controlar luzes, interruptores, tomadas, ventiladores e persianas. A sessão OAuth fica no `sessionStorage` do navegador e é revogada ao desconectar; nenhuma credencial é incorporada ao código ou enviada à Vercel.
 
-Para permitir que o navegador do site converse com a instância, adicione as origens do portal ao bloco `http` do `configuration.yaml` do Home Assistant e reinicie o Home Assistant:
+Para permitir que o navegador do site converse com a instância, adicione a origem do portal em **Configurações → Sistema → Rede → Servidor HTTP → Origens CORS permitidas**. Salve as alterações e confirme o reinício do Home Assistant:
 
 ```yaml
 http:
@@ -23,5 +23,5 @@ http:
     - http://127.0.0.1:4200
 ```
 
-Se já existir um bloco `http:`, acrescente `cors_allowed_origins` nele em vez de criar um segundo. No portal, conecte usando um endereço HTTPS acessível do Home Assistant (por exemplo, a URL externa do Home Assistant Cloud). Para desenvolvimento local, um endereço HTTP na rede local pode ser usado com `localhost`.
+Em instalações anteriores ao Home Assistant 2026.8, configure as mesmas origens no bloco `http` do `configuration.yaml`. Se já existir um bloco `http:`, acrescente `cors_allowed_origins` nele em vez de criar um segundo. No portal publicado, conecte usando um endereço HTTPS acessível (por exemplo, a URL externa do Home Assistant Cloud). Para desenvolvimento local, um endereço HTTP na rede local pode ser usado com `localhost`.
 
