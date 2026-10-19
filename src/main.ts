@@ -46,6 +46,7 @@ interface ShelfBox { game: BoardGame; x: number; y: number; width: number; depth
 interface ShelfLayout { shelf: SizedShelf; boxes: ShelfBox[]; usedArea: number; }
 interface FreeRect { x: number; y: number; width: number; depth: number; }
 interface PlacementChoice { shelfIndex: number; rectIndex: number; width: number; depth: number; rotated: boolean; score: number[]; }
+interface HomeAssistantEntity { entity_id: string; state: string; attributes: { friendly_name?: string; unit_of_measurement?: string; [key: string]: unknown }; }
 
 const emptyDraft = (): GameDraft => ({
   name: '', originalName: '', year: '', playersMin: '', playersMax: '', idealPlayers: '', timeMin: '', timeMax: '',
@@ -74,6 +75,8 @@ const emptyDraft = (): GameDraft => ({
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.75h10a2.25 2.25 0 0 1 2.25 2.25v10A2.25 2.25 0 0 1 17 19.25H7A2.25 2.25 0 0 1 4.75 17V7A2.25 2.25 0 0 1 7 4.75Z"/><path d="M8.5 9.5h7M8.5 13h3M16.5 15.5h.01"/></svg>
               } @else if (item.id === 'organizar-estante') {
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.75h16v14.5H4zM4 10h16M4 15.25h16M8 4.75V10m8-5.25V10m-5 0v5.25m5 0v4"/></svg>
+              } @else if (item.id === 'casa-inteligente') {
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3.75 10 8.25-6.5L20.25 10v9.25H14v-5.5h-4v5.5H3.75z"/><path d="M8 10h.01M16 10h.01"/></svg>
               } @else {
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.75h10.25M9 12h10.25M9 17.25h10.25M4.75 6.75h.5M4.75 12h.5M4.75 17.25h.5"/></svg>
               }
@@ -186,6 +189,32 @@ const emptyDraft = (): GameDraft => ({
             @if (gamesWithoutBoxDimensions.length) { <p class="shelf-footnote">Jogos sem comprimento, largura e altura cadastrados não entram no cálculo. Complete as dimensões no Cadastro de Jogos para incluí-los.</p> }
             <footer class="page-footer"><span>Controle da Vida Aulufa</span><span>Um projeto nosso <span class="heart">♥</span></span></footer>
           </div>
+        } @else if (activeItem === 'casa-inteligente') {
+          <div class="games-page page-container" id="casa-inteligente">
+            <div class="games-heading"><div><div class="eyebrow"><span class="eyebrow-line"></span> CASA CONECTADA</div><h1>Casa inteligente <span class="wave" aria-hidden="true">✳</span></h1><p class="intro">Veja o estado dos dispositivos e controle luzes, tomadas e ventiladores pelo nosso portal.</p></div></div>
+            <section class="ha-connect-card">
+              @if (!haConnected) {
+                <div class="ha-connect-icon" aria-hidden="true">⌂</div><div class="ha-connect-copy"><div class="section-kicker">CONEXÃO PRIVADA</div><h2>Conecte seu Home Assistant</h2><p>O login acontece diretamente na sua instância. A sessão fica somente nesta aba e não é enviada ao site.</p></div>
+                <label class="form-field ha-url-field"><span>Endereço do Home Assistant</span><input type="url" [(ngModel)]="haBaseUrl" placeholder="https://minha-casa.ui.nabu.casa" autocomplete="url"></label>
+                <button class="primary-button" type="button" (click)="connectHomeAssistant()" [disabled]="haBusy || !haBaseUrl.trim()">{{ haBusy ? 'Conectando…' : 'Conectar com segurança' }}</button>
+              } @else {
+                <div class="ha-connected-head"><div><div class="section-kicker">CONECTADO</div><h2>Seu Home Assistant</h2><p>{{ haBaseUrl }}</p></div><div class="ha-connected-actions"><button class="secondary-button" type="button" (click)="refreshHaEntities()" [disabled]="haBusy">Atualizar</button><button class="secondary-button ha-disconnect" type="button" (click)="disconnectHomeAssistant()">Desconectar</button></div></div>
+                <label class="search-field ha-search"><span aria-hidden="true">⌕</span><input type="search" [(ngModel)]="haSearch" placeholder="Buscar dispositivo" aria-label="Buscar dispositivo"></label>
+                @if (haBusy) { <div class="ha-loading">Buscando dispositivos…</div> }
+                @if (!haBusy && filteredHaEntities.length) {
+                  <div class="ha-entity-list">@for (entity of filteredHaEntities; track entity.entity_id) {
+                    <article class="ha-entity-card"><div class="ha-entity-icon" aria-hidden="true">{{ haEntityIcon(entity.entity_id) }}</div><div class="ha-entity-copy"><strong>{{ entity.attributes.friendly_name || entity.entity_id }}</strong><span>{{ haStateLabel(entity) }}</span></div>
+                      @if (isCover(entity.entity_id)) { <div class="ha-entity-controls"><button type="button" class="edit-button" (click)="controlHaEntity(entity, 'open_cover')">Abrir</button><button type="button" class="edit-button" (click)="controlHaEntity(entity, 'close_cover')">Fechar</button></div> }
+                      @else { <button type="button" class="ha-toggle" [class.ha-toggle-on]="entity.state === 'on'" [attr.aria-pressed]="entity.state === 'on'" [attr.aria-label]="(entity.state === 'on' ? 'Desligar ' : 'Ligar ') + (entity.attributes.friendly_name || entity.entity_id)" (click)="controlHaEntity(entity, entity.state === 'on' ? 'turn_off' : 'turn_on')"><span></span></button> }
+                    </article>
+                  }</div>
+                } @else if (!haBusy) { <div class="ha-empty-state">{{ haSearch ? 'Nenhum dispositivo corresponde à busca.' : 'Não encontrei luzes, interruptores, tomadas, ventiladores ou persianas controláveis.' }}</div> }
+              }
+              @if (haMessage) { <div class="ha-message" [class.ha-error]="haError" role="status">{{ haMessage }}</div> }
+            </section>
+            @if (!haConnected) { <div class="ha-setup-note"><strong>Antes da primeira conexão</strong><p>Se o Home Assistant pedir para autorizar, confirme o acesso. Caso o navegador bloqueie a conexão entre domínios, será preciso permitir a origem do site nas configurações HTTP do Home Assistant: <code>https://site-teste-two-iota.vercel.app</code>. Para desenvolvimento local, adicione também <code>http://localhost:4200</code>.</p></div> }
+            <footer class="page-footer"><span>Controle da Vida Aulufa</span><span>Um projeto nosso <span class="heart">♥</span></span></footer>
+          </div>
         } @else {
           <div class="page-container">
             <div class="welcome-row"><div><div class="eyebrow"><span class="eyebrow-line"></span> NOSSO CANTINHO</div><h1>Oi, vocês <span class="wave" aria-hidden="true">✳</span></h1><p class="intro">Um espaço para cuidar das pequenas coisas e abrir espaço para as grandes.</p></div><div class="date-card"><span class="date-icon">☀</span><span>Feito para a vida<br><strong>real, do jeitinho que ela é.</strong></span></div></div>
@@ -239,7 +268,7 @@ class AppComponent {
   private readonly storageKey = 'aulufa-boardgames-v1';
   private readonly deletedStorageKey = 'aulufa-boardgames-deleted-v1';
   private readonly shelfStorageKey = 'aulufa-shelves-v1';
-  navItems = [{ id: 'pendengas-da-vida', label: 'Pendengas da vida' }, { id: 'cadastro-jogos', label: 'Cadastro de Jogos' }, { id: 'organizar-estante', label: 'Organizar estante' }];
+  navItems = [{ id: 'pendengas-da-vida', label: 'Pendengas da vida' }, { id: 'cadastro-jogos', label: 'Cadastro de Jogos' }, { id: 'organizar-estante', label: 'Organizar estante' }, { id: 'casa-inteligente', label: 'Casa inteligente' }];
   activeItem = 'pendengas-da-vida';
   menuOpen = false;
   dialogOpen = false;
@@ -252,6 +281,16 @@ class AppComponent {
   shelfLayouts: ShelfLayout[] = [];
   unplacedGames: BoardGame[] = [];
   layoutMessage = '';
+  haBaseUrl = '';
+  haEntities: HomeAssistantEntity[] = [];
+  haSearch = '';
+  haConnected = false;
+  haBusy = false;
+  haMessage = '';
+  haError = false;
+  private haAccessToken = '';
+  private readonly haRefreshKey = 'aulufa-ha-refresh-token';
+  private readonly haUrlKey = 'aulufa-ha-url';
   searchTerm = '';
   playerFilter = '';
   idealPlayersFilter = '';
@@ -262,6 +301,10 @@ class AppComponent {
   get packableGames(): BoardGame[] { return this.games.filter((game) => this.validDimension(game.boxLength) && this.validDimension(game.boxWidth) && this.validDimension(game.boxHeight)); }
   get gamesWithoutBoxDimensions(): BoardGame[] { return this.games.filter((game) => !this.validDimension(game.boxLength) || !this.validDimension(game.boxWidth) || !this.validDimension(game.boxHeight)); }
   get placedBoxCount(): number { return this.shelfLayouts.reduce((sum, layout) => sum + layout.boxes.length, 0); }
+  get filteredHaEntities(): HomeAssistantEntity[] {
+    const term = this.haSearch.trim().toLocaleLowerCase('pt-BR');
+    return this.haEntities.filter((entity) => !term || `${entity.attributes.friendly_name ?? ''} ${entity.entity_id}`.toLocaleLowerCase('pt-BR').includes(term));
+  }
   get categories(): string[] { return [...new Set(this.games.flatMap((game) => game.categories))].sort((a, b) => a.localeCompare(b, 'pt-BR')); }
   get categoryOptions(): string[] { return [...new Set([...this.categories, ...this.draft.categories])].sort((a, b) => a.localeCompare(b, 'pt-BR')); }
   get idealPlayerOptions(): number[] {
@@ -281,6 +324,9 @@ class AppComponent {
   constructor() {
     const section = globalThis.location?.hash.slice(1);
     if (this.navItems.some((item) => item.id === section)) this.activeItem = section!;
+    try { this.haBaseUrl = globalThis.sessionStorage?.getItem(this.haUrlKey) ?? ''; } catch { /* Conexão pode ser configurada novamente nesta sessão. */ }
+    if (globalThis.location?.pathname === '/auth_callback') void this.handleHomeAssistantCallback();
+    else if (this.haBaseUrl) void this.resumeHomeAssistantSession();
   }
   selectItem(id: string): void { this.activeItem = id; this.closeMenu(); }
   toggleMenu(): void { this.menuOpen = !this.menuOpen; }
@@ -288,6 +334,100 @@ class AppComponent {
   addShelf(): void { this.shelves = [...this.shelves, this.newShelf()]; this.shelfSettingsChanged(); }
   removeShelf(id: string): void { if (this.shelves.length > 1) { this.shelves = this.shelves.filter((shelf) => shelf.id !== id); this.shelfSettingsChanged(); } }
   shelfSettingsChanged(): void { this.shelfLayouts = []; this.unplacedGames = []; this.layoutMessage = ''; try { globalThis.localStorage?.setItem(this.shelfStorageKey, JSON.stringify(this.shelves)); } catch { /* Medidas preservadas nesta sessão. */ } }
+  async connectHomeAssistant(): Promise<void> {
+    const base = this.normalizeHaUrl(this.haBaseUrl);
+    if (!base) { this.setHaMessage('Informe um endereço válido do Home Assistant.', true); return; }
+    if (base.startsWith('http://') && !/localhost|127\.0\.0\.1/.test(new URL(base).hostname)) { this.setHaMessage('Para conectar de fora da rede local, use um endereço HTTPS do Home Assistant.', true); return; }
+    this.haBaseUrl = base;
+    try {
+      globalThis.sessionStorage?.setItem(this.haUrlKey, base);
+      const verifier = this.randomOAuthValue(); const challenge = await this.createPkceChallenge(verifier); const state = this.randomOAuthValue();
+      globalThis.sessionStorage?.setItem('aulufa-ha-oauth', JSON.stringify({ base, verifier, state }));
+      const redirectUri = `${globalThis.location.origin}/auth_callback`;
+      const authorize = new URL(`${base}/auth/authorize`);
+      authorize.searchParams.set('client_id', `${globalThis.location.origin}/`); authorize.searchParams.set('redirect_uri', redirectUri);
+      authorize.searchParams.set('response_type', 'code'); authorize.searchParams.set('state', state);
+      authorize.searchParams.set('code_challenge', challenge); authorize.searchParams.set('code_challenge_method', 'S256');
+      globalThis.location.assign(authorize.toString());
+    } catch (error) { this.setHaMessage(error instanceof Error ? error.message : 'Não foi possível iniciar a autenticação.', true); }
+  }
+  async handleHomeAssistantCallback(): Promise<void> {
+    this.haBusy = true; this.activeItem = 'casa-inteligente';
+    try {
+      const params = new URLSearchParams(globalThis.location.search); const code = params.get('code'); const returnedState = params.get('state');
+      const saved = JSON.parse(globalThis.sessionStorage?.getItem('aulufa-ha-oauth') || 'null') as { base: string; verifier: string; state: string } | null;
+      globalThis.history.replaceState(null, '', `${globalThis.location.origin}/#casa-inteligente`);
+      if (!code || !saved || returnedState !== saved.state) throw new Error('A autorização não foi concluída. Tente conectar novamente.');
+      this.haBaseUrl = saved.base; globalThis.sessionStorage?.removeItem('aulufa-ha-oauth');
+      const body = new URLSearchParams({ grant_type: 'authorization_code', code, client_id: `${globalThis.location.origin}/`, redirect_uri: `${globalThis.location.origin}/auth_callback`, code_verifier: saved.verifier });
+      const response = await fetch(`${saved.base}/auth/token`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+      if (!response.ok) throw new Error('O Home Assistant recusou a autorização. Confira as configurações de CORS e tente novamente.');
+      const token = await response.json() as { access_token: string; refresh_token: string };
+      this.haAccessToken = token.access_token; globalThis.sessionStorage?.setItem(this.haRefreshKey, token.refresh_token);
+      await this.loadHaEntities();
+    } catch (error) { this.setHaMessage(error instanceof Error ? error.message : 'Falha ao conectar ao Home Assistant.', true); }
+    finally { this.haBusy = false; }
+  }
+  async refreshHaEntities(): Promise<void> { this.haBusy = true; this.setHaMessage(''); try { await this.loadHaEntities(); } catch (error) { this.setHaMessage(error instanceof Error ? error.message : 'Falha ao atualizar dispositivos.', true); } finally { this.haBusy = false; } }
+  async controlHaEntity(entity: HomeAssistantEntity, service: string): Promise<void> {
+    const domain = entity.entity_id.split('.')[0]; this.haBusy = true; this.setHaMessage('');
+    try {
+      const response = await fetch(`${this.haBaseUrl}/api/services/${domain}/${service}`, { method: 'POST', headers: { Authorization: `Bearer ${this.haAccessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ entity_id: entity.entity_id }) });
+      if (response.status === 401) { await this.refreshHaAccessToken(); return this.controlHaEntity(entity, service); }
+      if (!response.ok) throw new Error('O Home Assistant não conseguiu executar esse comando.');
+      await this.loadHaEntities(); this.setHaMessage(`${entity.attributes.friendly_name || entity.entity_id}: comando enviado.`);
+    } catch (error) { this.setHaMessage(error instanceof Error ? error.message : 'Falha ao controlar o dispositivo.', true); }
+    finally { this.haBusy = false; }
+  }
+  haEntityIcon(entityId: string): string { const domain = entityId.split('.')[0]; return domain === 'light' ? '☼' : domain === 'switch' ? '⏻' : domain === 'fan' ? '◌' : '▤'; }
+  haStateLabel(entity: HomeAssistantEntity): string { return entity.state === 'on' ? 'Ligado' : entity.state === 'off' ? 'Desligado' : entity.state === 'open' ? 'Aberto' : entity.state === 'closed' ? 'Fechado' : entity.state; }
+  isCover(entityId: string): boolean { return entityId.startsWith('cover.'); }
+  disconnectHomeAssistant(): void {
+    const refreshToken = globalThis.sessionStorage?.getItem(this.haRefreshKey);
+    if (refreshToken) void fetch(`${this.haBaseUrl}/auth/revoke`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token: refreshToken }) }).catch(() => undefined);
+    globalThis.sessionStorage?.removeItem(this.haRefreshKey); globalThis.sessionStorage?.removeItem(this.haUrlKey);
+    this.haAccessToken = ''; this.haBaseUrl = ''; this.haEntities = []; this.haConnected = false; this.setHaMessage('Sessão desconectada.');
+  }
+  private normalizeHaUrl(value: string): string {
+    try { const url = new URL(value.trim()); if (!['http:', 'https:'].includes(url.protocol)) return ''; return url.origin; }
+    catch { return ''; }
+  }
+  private randomOAuthValue(): string {
+    const bytes = new Uint8Array(32); globalThis.crypto.getRandomValues(bytes);
+    return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  }
+  private async createPkceChallenge(verifier: string): Promise<string> {
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+    return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  }
+  private async resumeHomeAssistantSession(): Promise<void> {
+    const refreshToken = globalThis.sessionStorage?.getItem(this.haRefreshKey);
+    if (!refreshToken) return;
+    this.haBusy = true;
+    try { await this.refreshHaAccessToken(); await this.loadHaEntities(); }
+    catch (error) { this.setHaMessage(error instanceof Error ? error.message : 'A sessão do Home Assistant expirou.', true); }
+    finally { this.haBusy = false; }
+  }
+  private async refreshHaAccessToken(): Promise<void> {
+    const refreshToken = globalThis.sessionStorage?.getItem(this.haRefreshKey);
+    if (!refreshToken) throw new Error('Sua sessão terminou. Conecte-se novamente.');
+    const body = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken, client_id: `${globalThis.location.origin}/` });
+    const response = await fetch(`${this.haBaseUrl}/auth/token`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+    if (!response.ok) { globalThis.sessionStorage?.removeItem(this.haRefreshKey); throw new Error('Sua sessão terminou. Conecte-se novamente.'); }
+    const token = await response.json() as { access_token: string; refresh_token?: string };
+    this.haAccessToken = token.access_token;
+    if (token.refresh_token) globalThis.sessionStorage?.setItem(this.haRefreshKey, token.refresh_token);
+  }
+  private async loadHaEntities(): Promise<void> {
+    if (!this.haAccessToken) await this.refreshHaAccessToken();
+    const response = await fetch(`${this.haBaseUrl}/api/states`, { headers: { Authorization: `Bearer ${this.haAccessToken}` } });
+    if (response.status === 401) { await this.refreshHaAccessToken(); return this.loadHaEntities(); }
+    if (!response.ok) throw new Error('Não consegui ler os dispositivos. Verifique o endereço e a configuração de CORS do Home Assistant.');
+    const entities = await response.json() as HomeAssistantEntity[];
+    this.haEntities = entities.filter((entity) => ['light', 'switch', 'fan', 'cover'].includes(entity.entity_id.split('.')[0]) && !['unknown', 'unavailable'].includes(entity.state)).sort((a, b) => (a.attributes.friendly_name || a.entity_id).localeCompare(b.attributes.friendly_name || b.entity_id, 'pt-BR'));
+    this.haConnected = true; this.setHaMessage('');
+  }
+  private setHaMessage(message: string, error = false): void { this.haMessage = message; this.haError = error; }
   shelfNumber(id: string): number { return this.shelves.findIndex((shelf) => shelf.id === id) + 1; }
   shelfUtilization(layout: ShelfLayout): number { return Math.round(layout.usedArea / ((layout.shelf.width ?? 0) * (layout.shelf.depth ?? 0)) * 100); }
   calculateShelfLayout(): void {
