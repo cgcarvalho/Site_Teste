@@ -212,7 +212,7 @@ const emptyDraft = (): GameDraft => ({
               }
               @if (haMessage) { <div class="ha-message" [class.ha-error]="haError" role="status">{{ haMessage }}</div> }
             </section>
-            @if (!haConnected) { <div class="ha-setup-note"><strong>Antes da primeira conexão</strong><p>Se o Home Assistant pedir para autorizar, confirme o acesso. Caso o navegador bloqueie a conexão entre domínios, será preciso permitir a origem do site nas configurações HTTP do Home Assistant: <code>https://site-teste-two-iota.vercel.app</code>. Para desenvolvimento local, adicione também <code>http://localhost:4200</code>.</p></div> }
+            @if (!haConnected) { <div class="ha-setup-note"><strong>Antes da primeira conexão</strong><p>Se o Home Assistant pedir para autorizar, confirme o acesso. Caso o navegador bloqueie a conexão, permita a origem do portal em Configurações → Sistema → Rede → Servidor HTTP → Origens CORS permitidas: <code>https://site-teste-two-iota.vercel.app</code>. Para desenvolvimento local, adicione também <code>http://localhost:4200</code>.</p></div> }
             <footer class="page-footer"><span>Controle da Vida Aulufa</span><span>Um projeto nosso <span class="heart">♥</span></span></footer>
           </div>
         } @else {
