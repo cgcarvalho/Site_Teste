@@ -5,11 +5,11 @@ const allowedTypes = [
   'application/vnd.openxmlformats-officedocument.presentationml.presentation'
 ];
 
-export default async function handler(request: Request): Promise<Response> {
-  if (request.method !== 'POST') {
-    return Response.json({ error: 'Método não permitido.' }, { status: 405, headers: { Allow: 'POST' } });
-  }
+export function GET(): Response {
+  return Response.json({ error: 'Método não permitido.' }, { status: 405, headers: { Allow: 'POST' } });
+}
 
+export async function POST(request: Request): Promise<Response> {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return Response.json({ error: 'O armazenamento de apresentações ainda não foi conectado ao projeto Vercel.' }, { status: 503 });
   }
