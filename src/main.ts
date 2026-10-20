@@ -1,7 +1,6 @@
-import { Component, inject } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { bootstrapApplication, DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { upload } from '@vercel/blob/client';
+import { bootstrapApplication } from '@angular/platform-browser';
 import { importedCollection } from './collection';
 
 export interface BoardGame {
@@ -78,8 +77,6 @@ const emptyDraft = (): GameDraft => ({
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.75h16v14.5H4zM4 10h16M4 15.25h16M8 4.75V10m8-5.25V10m-5 0v5.25m5 0v4"/></svg>
               } @else if (item.id === 'casa-inteligente') {
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3.75 10 8.25-6.5L20.25 10v9.25H14v-5.5h-4v5.5H3.75z"/><path d="M8 10h.01M16 10h.01"/></svg>
-              } @else if (item.id === 'apresentador-slides') {
-                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="12" rx="1.5"/><path d="M12 16.5v4m-4 0h8M8 8.5h8m-8 4h5"/></svg>
               } @else {
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.75h10.25M9 12h10.25M9 17.25h10.25M4.75 6.75h.5M4.75 12h.5M4.75 17.25h.5"/></svg>
               }
@@ -218,25 +215,6 @@ const emptyDraft = (): GameDraft => ({
             @if (!haConnected) { <div class="ha-setup-note"><strong>Antes da primeira conexão</strong><p>Se o Home Assistant pedir para autorizar, confirme o acesso. Caso o navegador bloqueie a conexão, permita a origem do portal em Configurações → Sistema → Rede → Servidor HTTP → Origens CORS permitidas: <code>https://site-teste-two-iota.vercel.app</code>. Para desenvolvimento local, adicione também <code>http://localhost:4200</code>.</p></div> }
             <footer class="page-footer"><span>Controle da Vida Aulufa</span><span>Um projeto nosso <span class="heart">♥</span></span></footer>
           </div>
-        } @else if (activeItem === 'apresentador-slides') {
-          <div class="games-page page-container" id="apresentador-slides">
-            @if (presentationSource) {
-              <div class="games-heading"><div><div class="eyebrow"><span class="eyebrow-line"></span> COMPARTILHAMENTO</div><h1>Apresentação <span class="wave" aria-hidden="true">✳</span></h1><p class="intro">Apresente os slides e use os controles do visualizador para navegar.</p></div><button class="secondary-button" type="button" (click)="closePresentation()">← Voltar ao apresentador</button></div>
-              @if (officeViewerUrl) { <div class="slide-viewer"><iframe [src]="officeViewerUrl" title="Apresentação PowerPoint" allowfullscreen></iframe></div><p class="presentation-note">Se os slides não carregarem, confira se o arquivo ainda está disponível ou abra <a [href]="officeViewerHref" target="_blank" rel="noreferrer">diretamente no visualizador ↗</a>.</p> }
-              @else { <div class="ha-setup-note"><strong>Link de apresentação inválido</strong><p>Este link não aponta para um arquivo compartilhado válido.</p><button class="text-button" type="button" (click)="closePresentation()">Voltar</button></div> }
-            } @else {
-              <div class="games-heading"><div><div class="eyebrow"><span class="eyebrow-line"></span> COMPARTILHE SEUS SLIDES</div><h1>Apresentador de slides <span class="wave" aria-hidden="true">✳</span></h1><p class="intro">Envie um arquivo PowerPoint e crie um link para apresentar em qualquer navegador.</p></div></div>
-              <section class="slide-upload-card">
-                <div class="ha-connect-icon" aria-hidden="true">▤</div><div class="ha-connect-copy"><div class="section-kicker">POWERPOINT · PPT OU PPTX</div><h2>Crie uma apresentação compartilhável</h2><p>O arquivo será armazenado online para que o link abra os slides no navegador.</p></div>
-                <label class="form-field slide-password"><span>Senha de publicação</span><input type="password" [(ngModel)]="presentationPassword" autocomplete="current-password" placeholder="Senha configurada no portal"></label>
-                <label class="slide-file-picker"><input type="file" accept=".ppt,.pptx,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" (change)="selectPresentation($event)"><span class="slide-file-icon" aria-hidden="true">＋</span><strong>{{ selectedPresentation?.name || 'Escolher arquivo PowerPoint' }}</strong><small>{{ selectedPresentation ? formatFileSize(selectedPresentation.size) : 'PPT ou PPTX · até 100 MB' }}</small></label>
-                @if (selectedPresentation) { <button class="primary-button slide-upload-button" type="button" (click)="uploadPresentation()" [disabled]="presentationBusy || !presentationPassword.trim()">{{ presentationBusy ? 'Enviando ' + presentationProgress + '%' : 'Enviar e criar link' }}</button> }
-                @if (presentationMessage) { <div class="slide-message" [class.slide-error]="presentationError" role="status">{{ presentationMessage }}</div> }
-              </section>
-              <div class="ha-setup-note"><strong>Configuração necessária no Vercel</strong><p>O administrador precisa conectar um armazenamento Blob público ao projeto e definir <code>PRESENTATION_UPLOAD_PASSWORD</code> nas variáveis de ambiente de produção. Use essa senha no formulário. Os arquivos enviados ficam públicos para que o link de apresentação funcione.</p></div>
-            }
-            <footer class="page-footer"><span>Controle da Vida Aulufa</span><span>Um projeto nosso <span class="heart">♥</span></span></footer>
-          </div>
         } @else {
           <div class="page-container">
             <div class="welcome-row"><div><div class="eyebrow"><span class="eyebrow-line"></span> NOSSO CANTINHO</div><h1>Oi, vocês <span class="wave" aria-hidden="true">✳</span></h1><p class="intro">Um espaço para cuidar das pequenas coisas e abrir espaço para as grandes.</p></div><div class="date-card"><span class="date-icon">☀</span><span>Feito para a vida<br><strong>real, do jeitinho que ela é.</strong></span></div></div>
@@ -290,7 +268,7 @@ class AppComponent {
   private readonly storageKey = 'aulufa-boardgames-v1';
   private readonly deletedStorageKey = 'aulufa-boardgames-deleted-v1';
   private readonly shelfStorageKey = 'aulufa-shelves-v1';
-  navItems = [{ id: 'pendengas-da-vida', label: 'Pendengas da vida' }, { id: 'cadastro-jogos', label: 'Cadastro de Jogos' }, { id: 'organizar-estante', label: 'Organizar estante' }, { id: 'casa-inteligente', label: 'Casa inteligente' }, { id: 'apresentador-slides', label: 'Apresentador de slides' }];
+  navItems = [{ id: 'pendengas-da-vida', label: 'Pendengas da vida' }, { id: 'cadastro-jogos', label: 'Cadastro de Jogos' }, { id: 'organizar-estante', label: 'Organizar estante' }, { id: 'casa-inteligente', label: 'Casa inteligente' }];
   activeItem = 'pendengas-da-vida';
   menuOpen = false;
   dialogOpen = false;
@@ -310,16 +288,6 @@ class AppComponent {
   haBusy = false;
   haMessage = '';
   haError = false;
-  selectedPresentation: File | null = null;
-  presentationPassword = '';
-  presentationBusy = false;
-  presentationProgress = 0;
-  presentationMessage = '';
-  presentationError = false;
-  presentationSource = '';
-  officeViewerUrl: SafeResourceUrl | null = null;
-  officeViewerHref = '';
-  private readonly sanitizer = inject(DomSanitizer);
   private haAccessToken = '';
   private readonly haRefreshKey = 'aulufa-ha-refresh-token';
   private readonly haUrlKey = 'aulufa-ha-url';
@@ -354,58 +322,13 @@ class AppComponent {
   }
 
   constructor() {
-    const hash = globalThis.location?.hash.slice(1) ?? '';
-    const [section, query] = hash.split('?', 2);
+    const section = globalThis.location?.hash.slice(1);
     if (this.navItems.some((item) => item.id === section)) this.activeItem = section!;
-    if (section === 'apresentador-slides' && query) this.showPresentation(new URLSearchParams(query).get('src') ?? '');
     try { this.haBaseUrl = globalThis.sessionStorage?.getItem(this.haUrlKey) ?? ''; } catch { /* Conexão pode ser configurada novamente nesta sessão. */ }
     if (globalThis.location?.pathname === '/auth_callback') void this.handleHomeAssistantCallback();
     else if (this.haBaseUrl) void this.resumeHomeAssistantSession();
   }
   selectItem(id: string): void { this.activeItem = id; this.closeMenu(); }
-  selectPresentation(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
-    if (file && !/\.pptx?$/i.test(file.name)) { this.selectedPresentation = null; this.setPresentationMessage('Escolha um arquivo .ppt ou .pptx.', true); input.value = ''; return; }
-    if (file && file.size > 100 * 1024 * 1024) { this.selectedPresentation = null; this.setPresentationMessage('O arquivo deve ter no máximo 100 MB.', true); input.value = ''; return; }
-    this.selectedPresentation = file; this.setPresentationMessage('');
-  }
-  async uploadPresentation(): Promise<void> {
-    const file = this.selectedPresentation;
-    if (!file || !this.presentationPassword.trim()) return;
-    this.presentationBusy = true; this.presentationProgress = 0; this.setPresentationMessage('');
-    try {
-      const safeName = file.name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(-100) || 'slides.pptx';
-      const result = await upload(`apresentacoes/${Date.now()}-${safeName}`, file, {
-        access: 'public', handleUploadUrl: '/api/presentations/upload', multipart: true,
-        headers: { Authorization: `Bearer ${this.presentationPassword}` },
-        contentType: file.name.toLowerCase().endsWith('.pptx') ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation' : 'application/vnd.ms-powerpoint',
-        onUploadProgress: ({ percentage }) => this.presentationProgress = Math.round(percentage)
-      });
-      const link = `${globalThis.location.origin}/#apresentador-slides?src=${encodeURIComponent(result.url)}`;
-      try { await navigator.clipboard.writeText(link); this.setPresentationMessage('Apresentação enviada. O link foi copiado para a área de transferência.'); }
-      catch { this.setPresentationMessage('Apresentação enviada. Copie o link da barra de endereço para compartilhar.'); }
-      this.showPresentation(result.url);
-      globalThis.history.replaceState(null, '', link);
-    } catch (error) {
-      this.setPresentationMessage(error instanceof Error ? error.message : 'Não foi possível enviar a apresentação. Confira a senha e a configuração do armazenamento.', true);
-    } finally { this.presentationBusy = false; }
-  }
-  closePresentation(): void {
-    this.presentationSource = ''; this.officeViewerUrl = null; this.officeViewerHref = '';
-    globalThis.history.replaceState(null, '', `${globalThis.location.origin}/#apresentador-slides`);
-  }
-  formatFileSize(bytes: number): string { return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`; }
-  private showPresentation(source: string): void {
-    try {
-      const fileUrl = new URL(source);
-      if (fileUrl.protocol !== 'https:' || !fileUrl.hostname.endsWith('.public.blob.vercel-storage.com')) return;
-      this.presentationSource = source;
-      this.officeViewerHref = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(source)}`;
-      this.officeViewerUrl = this.sanitizer.bypassSecurityTrustResourceUrl(`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(source)}`);
-    } catch { /* Link compartilhado malformado. */ }
-  }
-  private setPresentationMessage(message: string, isError = false): void { this.presentationMessage = message; this.presentationError = isError; }
   toggleMenu(): void { this.menuOpen = !this.menuOpen; }
   closeMenu(): void { this.menuOpen = false; }
   addShelf(): void { this.shelves = [...this.shelves, this.newShelf()]; this.shelfSettingsChanged(); }
