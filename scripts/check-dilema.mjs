@@ -1,0 +1,61 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import ts from 'typescript';
+const source = readFileSync(new URL('../src/dilema/model.ts', import.meta.url), 'utf8');
+const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
+const { newChronicle, total, rank, validateChronicle } = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
+const data = newChronicle();
+data.draft.houses[0] = { ...data.draft.houses[0], house: 'Carvalho', secret: 7, open: -3, coins: 5, power: 2 };
+data.draft.houses[1] = { ...data.draft.houses[1], house: 'Vale', secret: 10, open: 1, coins: 0, power: 0 };
+data.draft.houses[2].house = 'Lago';
+assert.equal(total(data.draft.houses[0]), 11, 'Soma inclui pontos públicos negativos');
+assert.deepEqual(data.draft.houses.map(h => rank(h,data.draft.houses)), [1,1,3], 'Vitória compartilhada sem desempate inventado');
+data.games.push(structuredClone(data.draft));
+assert.deepEqual(validateChronicle(JSON.parse(JSON.stringify(data))), data, 'Exportação e importação preservam histórico e rascunho');
+const invalid = mutate => { const copy = structuredClone(data); mutate(copy); assert.throws(() => validateChronicle(copy)); };
+invalid(d => d.version = 2);
+invalid(d => d.draft.houses = []);
+invalid(d => d.draft.date = '2026-02-31');
+invalid(d => d.games.push(d.games[0]));
+invalid(d => d.draft.houses[0].secret = '10');
+invalid(d => d.draft.houses[0].power = 1.5);
+invalid(d => d.draft.houses[0].open = Infinity);
+invalid(d => d.draft.houses[1].id = d.draft.houses[0].id);
+assert.equal(validateChronicle({...data,draft:{...data.draft,houses:data.draft.houses.map(h=>({...h,open:null}))}}).draft.houses[0].open,null,'Rascunho pode conter campo temporariamente vazio');
+console.log('Dilema: totais, empates, round-trip JSON e 8 cenários de arquivo inválido verificados.');
+
+// Exercise the component's persistence flow with browser services stubbed.
+const store = new Map();
+globalThis.localStorage = { getItem: key => store.get(key) ?? null, setItem: (key,value) => store.set(key,value) };
+globalThis.window = { addEventListener(){}, removeEventListener(){}, scrollTo(){} };
+globalThis.confirm = () => true;
+const modelUrl = 'data:text/javascript;base64,' + Buffer.from(js).toString('base64');
+const componentSource = readFileSync(new URL('../src/dilema/dilema.ts', import.meta.url), 'utf8')
+  .replace(/import .* from '@angular\/core';/, 'const Component = (_options: unknown) => (target: unknown) => target;')
+  .replace(/import .* from '@angular\/forms';/, 'const FormsModule = {};')
+  .replace("from './model'", `from '${modelUrl}'`);
+const componentJs = ts.transpileModule(componentSource, {compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022,experimentalDecorators:true}}).outputText;
+const { DilemaComponent } = await import('data:text/javascript;base64,' + Buffer.from(componentJs).toString('base64'));
+const component = new DilemaComponent();
+component.data.draft = structuredClone(data.draft);
+component.data.draft.king = 'Harald V';
+component.changed();
+assert.equal(new DilemaComponent().data.draft.king,'Harald V','Rascunho recuperado após reabrir');
+component.saveGame();
+assert.equal(component.data.games.length,1);
+assert.equal(component.data.draft.houses[0].house,'Carvalho');
+assert.equal(total(component.data.draft.houses[0]),0,'Novo reinado começa com zero pontos');
+component.edit(component.data.games[0]);
+const reopened = new DilemaComponent();
+assert.equal(reopened.editingId, component.data.games[0].id,'Edição recuperada ao reabrir');
+reopened.data.draft.king = 'Harald VI';
+reopened.saveGame();
+assert.equal(reopened.data.games.length,1,'Editar substitui o registro, sem duplicar');
+const before = JSON.stringify(reopened.data);
+await reopened.importFile({target:{files:[{size:2,text:async()=> '{}'}],value:'test'}});
+assert.equal(JSON.stringify(reopened.data),before,'Importação inválida preserva dados existentes');
+await reopened.importFile({target:{files:[{size:100,text:async()=> JSON.stringify(data)}],value:'test'}});
+assert.deepEqual(reopened.data,data,'Importação válida restaura campanha inteira');
+reopened.remove(reopened.data.games[0]);
+assert.equal(new DilemaComponent().data.games.length,0,'Exclusão confirmada persiste');
+console.log('Dilema: rascunho, histórico, edição após reabrir, importação válida/inválida e exclusão verificados.');

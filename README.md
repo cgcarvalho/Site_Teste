@@ -2,6 +2,14 @@
 
 Portal Angular para organização da vida e da coleção de board games.
 
+## O Dilema do Rei
+
+Acesse `/#dilema-do-rei` pelo menu. A ficha segue as Crônicas do Reino do manual (edição inglesa, páginas 44–46), com rei, data, casa, pontos de objetivo secreto e público, moedas, poder e total. Digite pontos concedidos, não quantidades de fichas. Totais e posições são calculados, respeitando empates. Prestígio e Cobiça continuam nos escudos conforme as regras do desfecho.
+
+Rascunho e histórico usam a chave localStorage `aulufa-dilema-do-rei-v1`. Use **Baixar arquivo JSON** para guardar um arquivo no computador e **Importar arquivo** para retomar em outro navegador ou dispositivo. Importar substitui a campanha após confirmação; arquivos inválidos são rejeitados. Não há sincronização entre dispositivos. Cada alteração pode ser recuperada ao reabrir a página. O histórico permite editar e excluir partidas.
+
+Verificação da pontuação e do formato de arquivo: `node scripts/check-dilema.mjs`.
+
 ## Executar
 
 ```bash

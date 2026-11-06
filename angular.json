@@ -14,6 +14,7 @@
           "options": {
             "browser": "src/main.ts",
             "index": "src/index.html",
+            "assets": [{ "glob": "**/*", "input": "public" }],
             "styles": ["src/styles.css"],
             "tsConfig": "tsconfig.app.json"
           },

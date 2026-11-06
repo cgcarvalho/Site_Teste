@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { importedCollection } from './collection';
+import { DilemaComponent } from './dilema/dilema';
 
 export interface BoardGame {
   id: string;
@@ -58,7 +59,7 @@ const emptyDraft = (): GameDraft => ({
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, DilemaComponent],
   template: `
     <div class="app-shell">
       <aside class="sidebar" [class.sidebar-open]="menuOpen">
@@ -96,7 +97,9 @@ const emptyDraft = (): GameDraft => ({
           <div class="topbar-date"><span class="date-dot"></span> Organizando a vida juntos</div>
         </header>
 
-        @if (activeItem === 'cadastro-jogos') {
+        @if (activeItem === 'dilema-do-rei') {
+          <app-dilema />
+        } @else if (activeItem === 'cadastro-jogos') {
           <div class="games-page page-container" id="cadastro-jogos">
             <div class="games-heading">
               <div><div class="eyebrow"><span class="eyebrow-line"></span> NOSSA COLEÇÃO</div><h1>Cadastro de jogos <span class="wave" aria-hidden="true">✳</span></h1>
@@ -268,7 +271,7 @@ class AppComponent {
   private readonly storageKey = 'aulufa-boardgames-v1';
   private readonly deletedStorageKey = 'aulufa-boardgames-deleted-v1';
   private readonly shelfStorageKey = 'aulufa-shelves-v1';
-  navItems = [{ id: 'pendengas-da-vida', label: 'Pendengas da vida' }, { id: 'cadastro-jogos', label: 'Cadastro de Jogos' }, { id: 'organizar-estante', label: 'Organizar estante' }, { id: 'casa-inteligente', label: 'Casa inteligente' }];
+  navItems = [{ id: 'pendengas-da-vida', label: 'Pendengas da vida' }, { id: 'cadastro-jogos', label: 'Cadastro de Jogos' }, { id: 'dilema-do-rei', label: 'O Dilema do Rei' }, { id: 'organizar-estante', label: 'Organizar estante' }, { id: 'casa-inteligente', label: 'Casa inteligente' }];
   activeItem = 'pendengas-da-vida';
   menuOpen = false;
   dialogOpen = false;
