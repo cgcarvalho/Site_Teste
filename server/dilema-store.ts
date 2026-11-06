@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { get, put, BlobPreconditionFailedError } from '@vercel/blob';
-import { validateChronicle } from '../src/dilema/model';
+import { validateChronicle } from '../src/dilema/model.js';
 
 type Storage = { get: typeof get; put: typeof put; configured: () => boolean };
 const headers = { 'Cache-Control': 'private, no-store', 'Vary': 'Authorization', 'X-Content-Type-Options': 'nosniff' };

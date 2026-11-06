@@ -10,7 +10,7 @@ const compile = source => ts.transpileModule(source,{compilerOptions:{module:ts.
 const modelUrl = url(compile(readFileSync(new URL('../src/dilema/model.ts',import.meta.url),'utf8')));
 const {newChronicle} = await import(modelUrl);
 const serverSource = readFileSync(new URL('../server/dilema-store.ts',import.meta.url),'utf8')
- .replace("'../src/dilema/model'",JSON.stringify(modelUrl))
+ .replace("'../src/dilema/model.js'",JSON.stringify(modelUrl))
  .replace("'@vercel/blob'",JSON.stringify(pathToFileURL(require.resolve('@vercel/blob')).href));
 const {campaignHandler} = await import(url(compile(serverSource)));
 const objects = new Map(); let writes=0;

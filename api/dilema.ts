@@ -1,2 +1,2 @@
-import { campaignHandler } from '../server/dilema-store';
+import { campaignHandler } from '../server/dilema-store.js';
 export default { fetch: campaignHandler() };

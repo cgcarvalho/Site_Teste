@@ -1,4 +1,4 @@
-import { Component, OnDestroy } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Chronicle, HouseScore, Reign, endings, newChronicle, newHouse, newReign, rank, total, validateChronicle } from './model';
 
@@ -23,8 +23,8 @@ export class DilemaComponent implements OnDestroy {
   private cloudTimer?: ReturnType<typeof setTimeout>;
   private readonly cloudMetaKey = 'aulufa-dilema-cloud-v1';
   private readonly onVisibility = () => { if (document.visibilityState === 'hidden') void this.saveCloud(); };
-  private readonly onStorage = (event: StorageEvent) => { if (event.key === this.key) { this.storageBlocked = true; this.storageStatus = 'A campanha mudou em outra aba. Exporte suas alterações antes de recarregar esta página.'; } };
-  constructor() {
+  private readonly onStorage = (event: StorageEvent) => { if (event.key === this.key) { this.storageBlocked = true; this.storageStatus = 'A campanha mudou em outra aba. Exporte suas alterações antes de recarregar esta página.'; this.changeDetector?.markForCheck(); } };
+  constructor(private readonly changeDetector?: ChangeDetectorRef) {
     try { const saved = localStorage.getItem(this.key); if (saved) this.data = validateChronicle(JSON.parse(saved)); this.storageStatus = saved ? 'Campanha recuperada deste navegador' : 'Rascunho salvo automaticamente neste navegador'; }
     catch { this.storageBlocked = true; this.storageStatus = 'Não foi possível recuperar os dados locais. Exporte um arquivo para preservar seu trabalho.'; }
     this.editingId = this.data.games.some(g => g.id === this.data.draft.id) ? this.data.draft.id : '';
@@ -68,7 +68,7 @@ export class DilemaComponent implements OnDestroy {
       this.cloudPending = sameCampaign ? meta.pending !== false : true;
       // Persist the recovery key before making a network request.
       if (sameCampaign || !meta.key) this.persistCloudMeta();
-      const response = await fetch('/api/dilema',{headers:{Authorization:`Bearer ${this.cloudKey}`},cache:'no-store'});
+      const response = await fetch('/api/dilema',{headers:{Authorization:`Bearer ${this.cloudKey}`},cache:'no-store',signal:AbortSignal.timeout(20000)});
       if (response.status === 404) {
         if (this.cloudRevision || fromLink) throw new Error('Campanha não encontrada no site. Seus dados locais foram preservados.');
         this.cloudConflict = false; this.cloudReady = true; this.cloudPending = true;
@@ -92,7 +92,7 @@ export class DilemaComponent implements OnDestroy {
       }
       this.persistCloudMeta();
     } catch (error) { this.cloudStatus = error instanceof Error ? error.message : 'Sem conexão com o site. Os dados permanecem neste navegador.'; }
-    finally { this.cloudBusy = false; }
+    finally { this.cloudBusy = false; this.changeDetector?.markForCheck(); }
     if (this.cloudReady && this.cloudPending) await this.saveCloud();
   }
   async saveCloud(): Promise<void> {
@@ -100,7 +100,7 @@ export class DilemaComponent implements OnDestroy {
     clearTimeout(this.cloudTimer); this.cloudBusy = true;
     try {
       const snapshot = JSON.stringify(validateChronicle(this.data));
-      const response = await fetch('/api/dilema',{method:'PUT',headers:{Authorization:`Bearer ${this.cloudKey}`,'Content-Type':'application/json',...(this.cloudRevision ? {'If-Match':this.cloudRevision} : {'If-None-Match':'*'})},body:snapshot,keepalive:snapshot.length < 50000});
+      const response = await fetch('/api/dilema',{method:'PUT',headers:{Authorization:`Bearer ${this.cloudKey}`,'Content-Type':'application/json',...(this.cloudRevision ? {'If-Match':this.cloudRevision} : {'If-None-Match':'*'})},body:snapshot,keepalive:snapshot.length < 50000,signal:AbortSignal.timeout(20000)});
       const body = await response.json();
       if (response.status === 409) this.cloudConflict = true;
       if (!response.ok) throw new Error(body.error || 'Não foi possível salvar no site.');
@@ -109,13 +109,14 @@ export class DilemaComponent implements OnDestroy {
       this.cloudStatus = 'Salvo permanentemente no site · ' + new Date(body.savedAt).toLocaleString('pt-BR');
       if (this.cloudPending) this.cloudTimer = setTimeout(() => void this.saveCloud(),1000);
     } catch (error) { this.cloudStatus = (error instanceof Error ? error.message : 'Falha ao salvar no site.') + ' A cópia local foi mantida.'; }
-    finally { this.cloudBusy = false; }
+    finally { this.cloudBusy = false; this.changeDetector?.markForCheck(); }
   }
   async copyCampaignLink(): Promise<void> {
     if (!this.cloudRevision) { this.message = 'Salve a campanha no site antes de copiar o link.'; return; }
     const url = `${location.origin}/#dilema-do-rei/${this.cloudKey}`;
     try { await navigator.clipboard.writeText(url); this.message = 'Link da campanha copiado. Guarde nos favoritos para consultar em outro dispositivo. Quem tiver esse link poderá consultar e editar a campanha.'; }
     catch { this.message = 'Copie e guarde este link da campanha: ' + url; }
+    finally { this.changeDetector?.markForCheck(); }
   }
   addHouse(): void { if (this.data.draft.houses.length < 5) { this.data.draft.houses.push(newHouse()); this.changed(); } }
   removeHouse(h: HouseScore): void {
@@ -156,7 +157,7 @@ export class DilemaComponent implements OnDestroy {
       if (!confirm(`Importar “${imported.campaign}”, com ${imported.games.length} partidas? Isso substituirá a campanha e o rascunho deste navegador. Exporte um backup antes se necessário.`)) return;
       this.data = imported; this.editingId = ''; this.storageBlocked = false; this.changed(); this.message = 'Campanha importada com sucesso.';
     } catch (error) { this.message = error instanceof Error ? error.message : 'Não foi possível importar o arquivo.'; }
-    finally { input.value = ''; }
+    finally { input.value = ''; this.changeDetector?.markForCheck(); }
   }
   dateLabel(date: string): string { return new Date(date+'T12:00:00').toLocaleDateString('pt-BR'); }
   winners(game: Reign): string { return game.houses.filter(h => rank(h,game.houses) === 1).map(h => h.house).join(' e '); }
