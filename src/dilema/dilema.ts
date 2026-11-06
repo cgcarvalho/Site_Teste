@@ -13,6 +13,16 @@ export class DilemaComponent implements OnDestroy {
   storageStatus = '';
   storageBlocked = false;
   editingId = '';
+  cloudStatus = 'Conectando ao arquivo permanente…';
+  cloudReady = false;
+  cloudBusy = false;
+  cloudConflict = false;
+  private cloudKey = '';
+  private cloudRevision: string | null = null;
+  private cloudPending = true;
+  private cloudTimer?: ReturnType<typeof setTimeout>;
+  private readonly cloudMetaKey = 'aulufa-dilema-cloud-v1';
+  private readonly onVisibility = () => { if (document.visibilityState === 'hidden') void this.saveCloud(); };
   private readonly onStorage = (event: StorageEvent) => { if (event.key === this.key) { this.storageBlocked = true; this.storageStatus = 'A campanha mudou em outra aba. Exporte suas alterações antes de recarregar esta página.'; } };
   constructor() {
     try { const saved = localStorage.getItem(this.key); if (saved) this.data = validateChronicle(JSON.parse(saved)); this.storageStatus = saved ? 'Campanha recuperada deste navegador' : 'Rascunho salvo automaticamente neste navegador'; }
@@ -20,11 +30,92 @@ export class DilemaComponent implements OnDestroy {
     this.editingId = this.data.games.some(g => g.id === this.data.draft.id) ? this.data.draft.id : '';
     window.addEventListener('storage', this.onStorage);
   }
-  ngOnDestroy(): void { window.removeEventListener('storage', this.onStorage); }
+  ngOnInit(): void { void this.connectCloud(); document.addEventListener('visibilitychange', this.onVisibility); }
+  ngOnDestroy(): void {
+    window.removeEventListener('storage', this.onStorage);
+    document.removeEventListener('visibilitychange', this.onVisibility);
+    clearTimeout(this.cloudTimer); void this.saveCloud();
+  }
   changed(): void {
     if (this.storageBlocked) return;
     try { localStorage.setItem(this.key, JSON.stringify(this.data)); this.storageStatus = 'Salvo neste navegador às ' + new Date().toLocaleTimeString('pt-BR'); }
     catch { this.storageStatus = 'Não foi possível salvar no navegador. Baixe o arquivo JSON para preservar os dados.'; }
+    this.cloudPending = true;
+    this.persistCloudMeta();
+    if (this.cloudReady && !this.cloudConflict) {
+      this.cloudStatus = 'Alterações aguardando salvamento no site…';
+      clearTimeout(this.cloudTimer);
+      this.cloudTimer = setTimeout(() => void this.saveCloud(), 1000);
+    }
+  }
+  private persistCloudMeta(): void {
+    if (!this.cloudKey) return;
+    try { localStorage.setItem(this.cloudMetaKey,JSON.stringify({key:this.cloudKey,etag:this.cloudRevision,pending:this.cloudPending})); } catch { /* A nuvem continua disponível mesmo sem armazenamento local. */ }
+  }
+  async connectCloud(reload = false): Promise<void> {
+    if (this.cloudBusy) return;
+    if (reload && !confirm('Carregar a versão salva no site? Uma cópia do estado atual será mantida neste navegador.')) return;
+    this.cloudBusy = true; this.cloudReady = false;
+    const before = JSON.stringify(this.data);
+    try {
+      let meta: {key?:string;etag?:string;pending?:boolean} = {};
+      try { meta = JSON.parse(localStorage.getItem(this.cloudMetaKey) || '{}'); } catch { /* Inicia uma conexão nova. */ }
+      const fromLink = globalThis.location?.hash.split('/')[1];
+      const key = /^[a-f0-9]{64}$/.test(fromLink ?? '') ? fromLink! : meta.key;
+      this.cloudKey = key && /^[a-f0-9]{64}$/.test(key) ? key : Array.from(crypto.getRandomValues(new Uint8Array(32)),b => b.toString(16).padStart(2,'0')).join('');
+      const sameCampaign = meta.key === this.cloudKey;
+      this.cloudRevision = sameCampaign ? meta.etag ?? null : null;
+      this.cloudPending = sameCampaign ? meta.pending !== false : true;
+      // Persist the recovery key before making a network request.
+      if (sameCampaign || !meta.key) this.persistCloudMeta();
+      const response = await fetch('/api/dilema',{headers:{Authorization:`Bearer ${this.cloudKey}`},cache:'no-store'});
+      if (response.status === 404) {
+        if (this.cloudRevision || fromLink) throw new Error('Campanha não encontrada no site. Seus dados locais foram preservados.');
+        this.cloudConflict = false; this.cloudReady = true; this.cloudPending = true;
+      } else {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || 'Não foi possível recuperar a campanha.');
+        const remote = validateChronicle(body.data);
+        const etag = response.headers.get('ETag');
+        if (!etag) throw new Error('Resposta de armazenamento sem revisão.');
+        if (!reload && sameCampaign && (this.cloudPending || before !== JSON.stringify(this.data))) {
+          if (this.cloudRevision !== etag) { this.cloudConflict = true; throw new Error('Há alterações locais e uma versão diferente no site. Baixe um backup e use Carregar do site para escolher a versão salva.'); }
+          // Offline edits are newer than the unchanged server version.
+        } else {
+          if (before !== JSON.stringify(remote)) { try { localStorage.setItem(this.key+'-backup',JSON.stringify(this.data)); } catch { throw new Error('Baixe um backup local antes de carregar a versão do site.'); } }
+          this.data = remote; this.cloudPending = false; this.storageBlocked = false;
+          this.editingId = this.data.games.some(g => g.id === this.data.draft.id) ? this.data.draft.id : '';
+          try { localStorage.setItem(this.key,JSON.stringify(this.data)); } catch { /* O arquivo permanente continua preservado. */ }
+        }
+        this.cloudRevision = etag; this.cloudReady = true; this.cloudConflict = false;
+        this.cloudStatus = 'Campanha recuperada do site · ' + new Date(body.savedAt).toLocaleString('pt-BR');
+      }
+      this.persistCloudMeta();
+    } catch (error) { this.cloudStatus = error instanceof Error ? error.message : 'Sem conexão com o site. Os dados permanecem neste navegador.'; }
+    finally { this.cloudBusy = false; }
+    if (this.cloudReady && this.cloudPending) await this.saveCloud();
+  }
+  async saveCloud(): Promise<void> {
+    if (!this.cloudReady || this.cloudBusy || this.cloudConflict || !this.cloudPending || this.storageBlocked) return;
+    clearTimeout(this.cloudTimer); this.cloudBusy = true;
+    try {
+      const snapshot = JSON.stringify(validateChronicle(this.data));
+      const response = await fetch('/api/dilema',{method:'PUT',headers:{Authorization:`Bearer ${this.cloudKey}`,'Content-Type':'application/json',...(this.cloudRevision ? {'If-Match':this.cloudRevision} : {'If-None-Match':'*'})},body:snapshot,keepalive:snapshot.length < 50000});
+      const body = await response.json();
+      if (response.status === 409) this.cloudConflict = true;
+      if (!response.ok) throw new Error(body.error || 'Não foi possível salvar no site.');
+      const etag = response.headers.get('ETag'); if (!etag) throw new Error('O site não confirmou a revisão salva.');
+      this.cloudRevision = etag; this.cloudPending = snapshot !== JSON.stringify(this.data); this.persistCloudMeta();
+      this.cloudStatus = 'Salvo permanentemente no site · ' + new Date(body.savedAt).toLocaleString('pt-BR');
+      if (this.cloudPending) this.cloudTimer = setTimeout(() => void this.saveCloud(),1000);
+    } catch (error) { this.cloudStatus = (error instanceof Error ? error.message : 'Falha ao salvar no site.') + ' A cópia local foi mantida.'; }
+    finally { this.cloudBusy = false; }
+  }
+  async copyCampaignLink(): Promise<void> {
+    if (!this.cloudRevision) { this.message = 'Salve a campanha no site antes de copiar o link.'; return; }
+    const url = `${location.origin}/#dilema-do-rei/${this.cloudKey}`;
+    try { await navigator.clipboard.writeText(url); this.message = 'Link da campanha copiado. Guarde nos favoritos para consultar em outro dispositivo. Quem tiver esse link poderá consultar e editar a campanha.'; }
+    catch { this.message = 'Copie e guarde este link da campanha: ' + url; }
   }
   addHouse(): void { if (this.data.draft.houses.length < 5) { this.data.draft.houses.push(newHouse()); this.changed(); } }
   removeHouse(h: HouseScore): void {

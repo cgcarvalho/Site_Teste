@@ -325,7 +325,7 @@ class AppComponent {
   }
 
   constructor() {
-    const section = globalThis.location?.hash.slice(1);
+    const section = globalThis.location?.hash.slice(1).split('/')[0];
     if (this.navItems.some((item) => item.id === section)) this.activeItem = section!;
     try { this.haBaseUrl = globalThis.sessionStorage?.getItem(this.haUrlKey) ?? ''; } catch { /* Conexão pode ser configurada novamente nesta sessão. */ }
     if (globalThis.location?.pathname === '/auth_callback') void this.handleHomeAssistantCallback();

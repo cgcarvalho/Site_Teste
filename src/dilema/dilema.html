@@ -5,7 +5,11 @@
     <div class="file-actions"><button class="primary-button" (click)="exportFile()">↓ Baixar arquivo JSON</button><button class="secondary-button" (click)="fileInput.click()">↑ Importar arquivo</button><input #fileInput type="file" accept=".json,application/json" hidden (change)="importFile($event)"></div>
   </section>
   <p class="storage" role="status">{{ storageStatus }}</p>
-  <p class="file-help">O rascunho e o histórico ficam neste navegador. Para guardar em arquivo local ou levar a outro dispositivo, baixe o JSON. Importe esse arquivo quando quiser retomar.</p>
+  <section class="cloud-panel" aria-label="Salvamento permanente">
+    <p class="storage" role="status">{{ cloudStatus }}</p>
+    <div class="file-actions"><button class="secondary-button" [disabled]="cloudBusy" (click)="cloudReady ? saveCloud() : connectCloud()">{{ cloudBusy ? 'Salvando / carregando…' : 'Salvar no site' }}</button><button class="secondary-button" (click)="copyCampaignLink()">Copiar link da campanha</button><button class="text-button" [disabled]="cloudBusy" (click)="connectCloud(true)">Carregar do site</button></div>
+    <p class="file-help">O rascunho e o histórico são salvos automaticamente em arquivo privado no site. Guarde o link da campanha para consultar em outro dispositivo; quem tiver o link poderá consultar e editar. O JSON continua disponível como backup local.</p>
+  </section>
   @if (message) { <p class="notice" role="status">{{ message }}</p> }
   <section class="sheet">
     <div class="sheet-heading"><div><div class="eyebrow">{{ editingId ? 'REVISÃO DO REGISTRO' : 'À MESA' }}</div><h2>{{ editingId ? 'Editar reinado' : 'Registrar um reinado' }}</h2></div><span class="player-count">{{ data.draft.houses.length }} casas no conselho</span></div>
