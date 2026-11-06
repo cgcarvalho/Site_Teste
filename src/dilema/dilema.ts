@@ -17,12 +17,13 @@ export class DilemaComponent implements OnDestroy {
   cloudReady = false;
   cloudBusy = false;
   cloudConflict = false;
+  readOnly = false;
   private cloudKey = '';
   private cloudRevision: string | null = null;
   private cloudPending = true;
   private cloudTimer?: ReturnType<typeof setTimeout>;
   private readonly cloudMetaKey = 'aulufa-dilema-cloud-v1';
-  get recoveryLink(): string { return this.cloudRevision ? `${location.origin}/#dilema-do-rei/${this.cloudKey}` : ''; }
+  get recoveryLink(): string { return !this.readOnly && this.cloudRevision && this.cloudKey ? `${location.origin}/#dilema-do-rei/${this.cloudKey}` : ''; }
   private readonly onVisibility = () => { if (document.visibilityState === 'hidden') void this.saveCloud(); };
   private readonly onStorage = (event: StorageEvent) => { if (event.key === this.key) { this.storageBlocked = true; this.storageStatus = 'A campanha mudou em outra aba. Exporte suas alterações antes de recarregar esta página.'; this.changeDetector?.markForCheck(); } };
   constructor(private readonly changeDetector?: ChangeDetectorRef) {
@@ -38,7 +39,7 @@ export class DilemaComponent implements OnDestroy {
     clearTimeout(this.cloudTimer); void this.saveCloud();
   }
   changed(): void {
-    if (this.storageBlocked) return;
+    if (this.storageBlocked || this.readOnly) return;
     try { localStorage.setItem(this.key, JSON.stringify(this.data)); this.storageStatus = 'Salvo neste navegador às ' + new Date().toLocaleTimeString('pt-BR'); }
     catch { this.storageStatus = 'Não foi possível salvar no navegador. Baixe o arquivo JSON para preservar os dados.'; }
     this.cloudPending = true;
@@ -50,7 +51,7 @@ export class DilemaComponent implements OnDestroy {
     }
   }
   private persistCloudMeta(): void {
-    if (!this.cloudKey) return;
+    if (!this.cloudKey || this.readOnly) return;
     try { localStorage.setItem(this.cloudMetaKey,JSON.stringify({key:this.cloudKey,etag:this.cloudRevision,pending:this.cloudPending})); } catch { /* A nuvem continua disponível mesmo sem armazenamento local. */ }
   }
   async connectCloud(reload = false): Promise<void> {
@@ -63,33 +64,33 @@ export class DilemaComponent implements OnDestroy {
       try { meta = JSON.parse(localStorage.getItem(this.cloudMetaKey) || '{}'); } catch { /* Inicia uma conexão nova. */ }
       const fromLink = globalThis.location?.hash.split('/')[1];
       const key = /^[a-f0-9]{64}$/.test(fromLink ?? '') ? fromLink! : meta.key;
-      this.cloudKey = key && /^[a-f0-9]{64}$/.test(key) ? key : Array.from(crypto.getRandomValues(new Uint8Array(32)),b => b.toString(16).padStart(2,'0')).join('');
-      const sameCampaign = meta.key === this.cloudKey;
+      this.cloudKey = key && /^[a-f0-9]{64}$/.test(key) ? key : '';
+      const sameCampaign = !!this.cloudKey && meta.key === this.cloudKey;
       this.cloudRevision = sameCampaign ? meta.etag ?? null : null;
       this.cloudPending = sameCampaign ? meta.pending !== false : true;
       // Persist the recovery key before making a network request.
-      if (sameCampaign || !meta.key) this.persistCloudMeta();
-      const response = await fetch('/api/dilema',{headers:{Authorization:`Bearer ${this.cloudKey}`},cache:'no-store',signal:AbortSignal.timeout(20000)});
+      const fromPrivateLink = /^[a-f0-9]{64}$/.test(fromLink ?? '');
+      const response = await fetch(fromPrivateLink ? '/api/dilema' : '/api/dilema?default=1',{headers:this.cloudKey ? {Authorization:`Bearer ${this.cloudKey}`} : {},cache:'no-store',signal:AbortSignal.timeout(20000)});
       if (response.status === 404) {
-        if (this.cloudRevision || fromLink) throw new Error('Campanha não encontrada no site. Seus dados locais foram preservados.');
-        this.cloudConflict = false; this.cloudReady = true; this.cloudPending = true;
+        throw new Error('Campanha não encontrada no site. Seus dados locais foram preservados.');
       } else {
         const body = await response.json();
         if (!response.ok) throw new Error(body.error || 'Não foi possível recuperar a campanha.');
         const remote = validateChronicle(body.data);
+        this.readOnly = body.canEdit === false;
         const etag = response.headers.get('ETag');
         if (!etag) throw new Error('Resposta de armazenamento sem revisão.');
-        if (!reload && sameCampaign && (this.cloudPending || before !== JSON.stringify(this.data))) {
+        if (!this.readOnly && !reload && sameCampaign && (this.cloudPending || before !== JSON.stringify(this.data))) {
           if (this.cloudRevision !== etag) { this.cloudConflict = true; throw new Error('Há alterações locais e uma versão diferente no site. Baixe um backup e use Carregar do site para escolher a versão salva.'); }
           // Offline edits are newer than the unchanged server version.
         } else {
-          if (before !== JSON.stringify(remote)) { try { localStorage.setItem(this.key+'-backup',JSON.stringify(this.data)); } catch { throw new Error('Baixe um backup local antes de carregar a versão do site.'); } }
+          if (before !== JSON.stringify(remote)) { try { localStorage.setItem(this.key+'-backup',JSON.stringify(this.data)); } catch { if (!this.readOnly) throw new Error('Baixe um backup local antes de carregar a versão do site.'); } }
           this.data = remote; this.cloudPending = false; this.storageBlocked = false;
           this.editingId = this.data.games.some(g => g.id === this.data.draft.id) ? this.data.draft.id : '';
-          try { localStorage.setItem(this.key,JSON.stringify(this.data)); } catch { /* O arquivo permanente continua preservado. */ }
+          if (!this.readOnly) { try { localStorage.setItem(this.key,JSON.stringify(this.data)); } catch { /* O arquivo permanente continua preservado. */ } }
         }
         this.cloudRevision = etag; this.cloudReady = true; this.cloudConflict = false;
-        this.cloudStatus = 'Campanha recuperada do site · ' + new Date(body.savedAt).toLocaleString('pt-BR');
+        this.cloudStatus = 'Campanha recuperada do site · ' + new Date(body.savedAt).toLocaleString('pt-BR') + (this.readOnly ? ' · Modo consulta' : '');
       }
       this.persistCloudMeta();
     } catch (error) { this.cloudStatus = error instanceof Error ? error.message : 'Sem conexão com o site. Os dados permanecem neste navegador.'; }
@@ -97,7 +98,7 @@ export class DilemaComponent implements OnDestroy {
     if (this.cloudReady && this.cloudPending) await this.saveCloud();
   }
   async saveCloud(): Promise<void> {
-    if (!this.cloudReady || this.cloudBusy || this.cloudConflict || !this.cloudPending || this.storageBlocked) return;
+    if (!this.cloudReady || this.cloudBusy || this.cloudConflict || !this.cloudPending || this.storageBlocked || this.readOnly) return;
     clearTimeout(this.cloudTimer); this.cloudBusy = true;
     try {
       const snapshot = JSON.stringify(validateChronicle(this.data));
@@ -119,13 +120,15 @@ export class DilemaComponent implements OnDestroy {
     catch { this.message = 'Copie e guarde este link da campanha: ' + url; }
     finally { this.changeDetector?.markForCheck(); }
   }
-  addHouse(): void { if (this.data.draft.houses.length < 5) { this.data.draft.houses.push(newHouse()); this.changed(); } }
+  addHouse(): void { if (!this.readOnly && this.data.draft.houses.length < 5) { this.data.draft.houses.push(newHouse()); this.changed(); } }
   removeHouse(h: HouseScore): void {
+    if (this.readOnly) return;
     if (this.data.draft.houses.length <= 3) return;
     if ((h.house || total(h) || h.secret || h.open || h.coins || h.power) && !confirm('Remover esta casa da partida atual?')) return;
     this.data.draft.houses = this.data.draft.houses.filter(row => row.id !== h.id); this.changed();
   }
   saveGame(): void {
+    if (this.readOnly) return;
     try {
       validateChronicle(this.data);
       const draft = this.data.draft;
@@ -138,10 +141,12 @@ export class DilemaComponent implements OnDestroy {
     } catch (error) { this.message = error instanceof Error ? error.message : 'Confira os campos.'; }
   }
   edit(game: Reign): void {
+    if (this.readOnly) return;
     if (!confirm('Abrir esta partida para editar? O rascunho atual será substituído.')) return;
     this.data.draft = structuredClone(game); this.editingId = game.id; this.changed(); window.scrollTo({top:0,behavior:'smooth'});
   }
   remove(game: Reign): void {
+    if (this.readOnly) return;
     if (!confirm(`Excluir o registro de ${game.king}? Baixe um backup se quiser preservá-lo.`)) return;
     this.data.games = this.data.games.filter(g => g.id !== game.id); if (this.editingId === game.id) this.editingId = ''; this.changed();
   }
@@ -151,6 +156,7 @@ export class DilemaComponent implements OnDestroy {
     this.message = 'Arquivo JSON preparado para download. Guarde-o e use Importar arquivo para continuar depois.';
   }
   async importFile(event: Event): Promise<void> {
+    if (this.readOnly) return;
     const input = event.target as HTMLInputElement; const file = input.files?.[0]; if (!file) return;
     try {
       if (file.size > 5_000_000) throw new Error('O arquivo deve ter até 5 MB.');

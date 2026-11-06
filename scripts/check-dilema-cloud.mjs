@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
+import {createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 import ts from 'typescript';
 import {BlobPreconditionFailedError} from '@vercel/blob';
@@ -14,7 +15,7 @@ const serverSource = readFileSync(new URL('../server/dilema-store.ts',import.met
  .replace("'@vercel/blob'",JSON.stringify(pathToFileURL(require.resolve('@vercel/blob')).href));
 const {campaignHandler} = await import(url(compile(serverSource)));
 const objects = new Map(); let writes=0;
-const handler = campaignHandler({configured:()=>true,
+const handler = campaignHandler({configured:()=>true, defaultHash:()=>createHash('sha256').update('a'.repeat(64)).digest('hex'),
  async get(path){const item=objects.get(path);return item?{statusCode:200,stream:new Blob([item.content]).stream(),blob:{etag:item.etag}}:null;},
  async put(path,content,options){const old=objects.get(path);if((old&&!options.allowOverwrite)||(options.ifMatch&&old?.etag!==options.ifMatch))throw new BlobPreconditionFailedError();const etag=`"${++writes}"`;objects.set(path,{content,etag});return {etag};}
 });
@@ -36,10 +37,19 @@ const updated={...data,campaign:'Depois da atualização'};
 assert.equal((await handler(request('PUT',updated,{'If-Match':etag}))).status,200);
 assert.equal((await handler(request('PUT',data,{'If-Match':etag}))).status,409,'Revisão antiga não sobrescreve dados');
 assert.equal((await (await handler(request())).json()).data.campaign,updated.campaign);
+const publicResult=await handler(new Request('https://site.example/api/dilema?default=1'));
+assert.equal(publicResult.status,200);
+const publicBody=await publicResult.json();
+assert.equal(publicBody.data.campaign,updated.campaign);
+assert.equal(publicBody.canEdit,false,'Endereço normal permite consultar sem conceder edição');
+assert.ok(!JSON.stringify(publicBody).includes(key),'Resposta de consulta não revela chave de edição');
+const ownerResult=await handler(new Request('https://site.example/api/dilema?default=1',{headers:{Authorization:`Bearer ${key}`}}));
+assert.equal((await ownerResult.json()).canEdit,true);
 assert.equal((await campaignHandler({configured:()=>false})(request())).status,503);
 console.log('API: arquivo privado, recuperação, validação, isolamento, cache e conflitos verificados.');
 
 const local=new Map();
+local.set('aulufa-dilema-cloud-v1',JSON.stringify({key,etag:(await handler(request())).headers.get('ETag'),pending:true}));
 globalThis.localStorage={getItem:k=>local.get(k)??null,setItem:(k,v)=>local.set(k,v)};
 globalThis.window={addEventListener(){},removeEventListener(){},scrollTo(){}};
 globalThis.location={origin:'https://site.example',hash:'#dilema-do-rei'};
@@ -49,7 +59,7 @@ const componentSource=readFileSync(new URL('../src/dilema/dilema.ts',import.meta
  .replace(/import .* from '@angular\/forms';/,'const FormsModule = {};')
  .replace("'./model'",JSON.stringify(modelUrl));
 const {DilemaComponent}=await import(url(compile(componentSource)));
-globalThis.fetch=async (_url,options={})=>handler(new Request('https://site.example/api/dilema',options));
+globalThis.fetch=async (_url,options={})=>handler(new Request('https://site.example'+_url,options));
 const first=new DilemaComponent();first.data=data;await first.connectCloud();
 assert.match(first.cloudStatus,/Salvo permanentemente/);
 const cloudMeta=JSON.parse(local.get('aulufa-dilema-cloud-v1'));assert.ok(cloudMeta.etag);
@@ -60,8 +70,18 @@ local.clear();location.hash='#dilema-do-rei/'+cloudKey;
 const otherDevice=new DilemaComponent();await otherDevice.connectCloud();assert.equal(otherDevice.data.draft.king,'Reinado do teste','Outro dispositivo recupera a campanha pelo link');
 globalThis.fetch=async()=>{throw new Error('offline');};
 otherDevice.data.draft.king='Alteração offline';otherDevice.changed();await otherDevice.saveCloud();assert.match(otherDevice.cloudStatus,/local/);
-globalThis.fetch=async (_url,options={})=>handler(new Request('https://site.example/api/dilema',options));
+globalThis.fetch=async (_url,options={})=>handler(new Request('https://site.example'+_url,options));
 const offlineReopened=new DilemaComponent();await offlineReopened.connectCloud();assert.equal(offlineReopened.data.draft.king,'Alteração offline');assert.match(offlineReopened.cloudStatus,/Salvo permanentemente/);
 otherDevice.data.draft.king='Sessão antiga';otherDevice.changed();await otherDevice.saveCloud();assert.equal(otherDevice.cloudConflict,true);
 for(const component of [first,reopened,otherDevice,offlineReopened]) clearTimeout(component.cloudTimer);
+local.clear();location.hash='#dilema-do-rei';
+const writesBeforeGuest=writes;
+const externalVisitor=new DilemaComponent();await externalVisitor.connectCloud();
+assert.equal(externalVisitor.readOnly,true);
+assert.equal(externalVisitor.data.draft.king,'Alteração offline','Navegador sem chave recupera a campanha principal no endereço normal');
+assert.equal(externalVisitor.recoveryLink,'','Consulta não expõe o link privado de edição');
+assert.equal(writes,writesBeforeGuest,'Abrir de fora não cria nem sobrescreve campanha');
+externalVisitor.saveGame();await externalVisitor.saveCloud();
+assert.equal(writes,writesBeforeGuest);
 console.log('Cliente → API → arquivo → outro dispositivo: migração local, reabertura, edição offline e conflito verificados.');
+console.log('Regressão: endereço normal em navegador vazio mostra a campanha principal sem criar outra campanha.');
