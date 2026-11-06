@@ -22,6 +22,7 @@ export class DilemaComponent implements OnDestroy {
   private cloudPending = true;
   private cloudTimer?: ReturnType<typeof setTimeout>;
   private readonly cloudMetaKey = 'aulufa-dilema-cloud-v1';
+  get recoveryLink(): string { return this.cloudRevision ? `${location.origin}/#dilema-do-rei/${this.cloudKey}` : ''; }
   private readonly onVisibility = () => { if (document.visibilityState === 'hidden') void this.saveCloud(); };
   private readonly onStorage = (event: StorageEvent) => { if (event.key === this.key) { this.storageBlocked = true; this.storageStatus = 'A campanha mudou em outra aba. Exporte suas alterações antes de recarregar esta página.'; this.changeDetector?.markForCheck(); } };
   constructor(private readonly changeDetector?: ChangeDetectorRef) {
@@ -113,7 +114,7 @@ export class DilemaComponent implements OnDestroy {
   }
   async copyCampaignLink(): Promise<void> {
     if (!this.cloudRevision) { this.message = 'Salve a campanha no site antes de copiar o link.'; return; }
-    const url = `${location.origin}/#dilema-do-rei/${this.cloudKey}`;
+    const url = this.recoveryLink;
     try { await navigator.clipboard.writeText(url); this.message = 'Link da campanha copiado. Guarde nos favoritos para consultar em outro dispositivo. Quem tiver esse link poderá consultar e editar a campanha.'; }
     catch { this.message = 'Copie e guarde este link da campanha: ' + url; }
     finally { this.changeDetector?.markForCheck(); }

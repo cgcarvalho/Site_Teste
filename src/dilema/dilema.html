@@ -9,6 +9,7 @@
     <p class="storage" role="status">{{ cloudStatus }}</p>
     <div class="file-actions"><button class="secondary-button" [disabled]="cloudBusy" (click)="cloudReady ? saveCloud() : connectCloud()">{{ cloudBusy ? 'Salvando / carregando…' : 'Salvar no site' }}</button><button class="secondary-button" (click)="copyCampaignLink()">Copiar link da campanha</button><button class="text-button" [disabled]="cloudBusy" (click)="connectCloud(true)">Carregar do site</button></div>
     <p class="file-help">O rascunho e o histórico são salvos automaticamente em arquivo privado no site. Guarde o link da campanha para consultar em outro dispositivo; quem tiver o link poderá consultar e editar. O JSON continua disponível como backup local.</p>
+    @if (recoveryLink) { <label>Link de recuperação da campanha<input readonly [value]="recoveryLink" aria-label="Link de recuperação da campanha"></label> }
   </section>
   @if (message) { <p class="notice" role="status">{{ message }}</p> }
   <section class="sheet">
